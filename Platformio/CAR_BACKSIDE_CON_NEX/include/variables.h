@@ -76,7 +76,7 @@ uint16_t screen_off_delay = 3000; // 3sec
     uint8_t mb_slave_ID;
     uint8_t mb_baud_rate;
     uint8_t buzzer_out_mode;
-    uint8_t buzzer_melody_1; // NOT USED
+    uint8_t scrreen_off_delay; // 
     uint8_t buzzer_melody_2; // NOT USED
     uint8_t buzzer_melody_3; // NOT USED
     uint8_t buzzer_melody_4; // NOT USED
@@ -107,6 +107,7 @@ uint16_t screen_off_delay = 3000; // 3sec
     bool light_output_state ;    //состояние выхода освещения 
     bool pump_output_state;     //состояние выхода насоса
     bool sensors_supply_output_state;
+    bool main_supply_output_state;
     bool wdt_reset_output_state;
     bool screen_sleep_mode;
     bool low_washer_water_level;
