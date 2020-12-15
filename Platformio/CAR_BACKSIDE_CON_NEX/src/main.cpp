@@ -1547,7 +1547,7 @@ float fnVoltageRead(void){
 
             //****** таймер на отключение экрана
             if(main_data.door_switch_state){
-                  timerScreenOffDelay.setInterval(screen_off_delay);
+                  timerScreenOffDelay.setInterval(setpoints_data.scrreen_off_delay * 1000);
             }
             else
             {
@@ -1606,7 +1606,6 @@ float fnVoltageRead(void){
                   }
 
                 flag_pjon_flow_sensor_connected_old_state = flag_pjon_flow_sensor_connected; 
-
 
             }
 
@@ -1843,7 +1842,8 @@ bool fnMainPowerControl(void){
             timerShutdownDelay.setInterval(setpoints_data.shutdown_delay * 60000);
             return true;
       }  
-
-      if( timerShutdownDelay.isReady() ) return false;   
+      else {
+            if( timerShutdownDelay.isReady() ) return false; 
+      }        
 }
 //**********************************************************************
