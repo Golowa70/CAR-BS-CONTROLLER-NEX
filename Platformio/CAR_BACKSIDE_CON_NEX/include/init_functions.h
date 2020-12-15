@@ -48,7 +48,7 @@ void fnDefaultSetpointsInit(void){
     setpoints_data.mb_slave_ID = 2;
     setpoints_data.mb_baud_rate = 1; //1-9600, 2-19200, 3-38400 ...
     setpoints_data.buzzer_out_mode = ON_MODE;
-    setpoints_data.buzzer_melody_1 = 1;
+    setpoints_data.scrreen_off_delay = 5; // 5 секунд
     setpoints_data.buzzer_melody_2 = 2;
     setpoints_data.buzzer_melody_3 = 3;
     setpoints_data.buzzer_melody_4 = 4;
