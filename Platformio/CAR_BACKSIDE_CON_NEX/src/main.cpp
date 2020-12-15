@@ -99,6 +99,7 @@ void pj_receiver_function(uint8_t *payload, uint16_t length, const PJON_Packet_I
 void fnPjonSender(void);
 void fnWaterLevelControl(void);
 bool fnSensorsPowerControl(void);
+bool fnMainPowerControl(void);
 
 //обработчик прерывания от Timer3
 //ISR(TIMER3_A) {
@@ -169,9 +170,9 @@ void setup() {
   timerPjonFloatFault.setInterval(FLOAT_FAULT_TIME);
   timerPjonTransmittPeriod.setInterval(setpoints_data.pjon_transmitt_period * 1000);
   timerShutdownDelay.setMode(MANUAL);
-  timerShutdownDelay.setInterval(setpoints_data.shutdown_delay * 1000);
+  timerShutdownDelay.setInterval(setpoints_data.shutdown_delay * 60000);
   timerScreenOffDelay.setMode(MANUAL);
-  timerScreenOffDelay.setInterval(5000);
+  timerScreenOffDelay.setInterval(10000);
   timerMenuDynamicUpdate.setInterval(MENU_UPDATE_PERIOD);
 
  
@@ -190,7 +191,6 @@ void setup() {
 
   pjon_float_sensor_fault_cnt = setpoints_data.pjon_float_fault_timer; //
 
-  main_data.sensors_supply_output_state = fnSensorsPowerControl();
 
   //rtttl :: begin (BUZZER, melody_2);   // пиликаем при старте
 
@@ -364,7 +364,7 @@ void fnMenuStaticDataUpdate(void){
 
                   break;   
 
-            case BUZZERSET_PAGE:
+            case ADDITIONALSET_PAGE:
 
                   break;             
             
@@ -921,43 +921,39 @@ void fnMenuDynamicDataUpdate(void){
 
             break;   
 
-            case BUZZERSET_PAGE:    
+            case ADDITIONALSET_PAGE:    
                               //обновляем динамические параметры страницы
                               switch (setpoints_data.buzzer_out_mode)
                               {
                                     case OFF_MODE:
-                                                myNex. writeStr("p11t6.txt", "OFF");
+                                                myNex. writeStr(F("p11t6.txt"), F("OFF"));
                                                 break;
 
                                     case ON_MODE:
-                                                myNex. writeStr("p11t6.txt", "ON");
-                                                break;
-
-                                    case AUTO_MODE:
-                                                myNex. writeStr("p11t6.txt", "AUTO");
-                                                break;            
+                                                myNex. writeStr(F("p11t6.txt"), F("ON") );
+                                                break;           
                                     
                                     default:
                                     break;
                               }
-
-                              myNex. writeNum("p11n0.val", setpoints_data.buzzer_melody_1);
-                              myNex. writeNum("p11n1.val", setpoints_data.buzzer_melody_2);
-                              myNex. writeNum("p11n2.val", setpoints_data.buzzer_melody_3);
-                              myNex. writeNum("p11n3.val", setpoints_data.buzzer_melody_4);
-
+                              
+                              myNex. writeNum("p11n0.val", setpoints_data.shutdown_delay);
+                              myNex. writeNum("p11n1.val", setpoints_data.scrreen_off_delay);
+                             // myNex. writeNum("p11n2.val", setpoints_data.buzzer_melody_3);
+                             // myNex. writeNum("p11n3.val", setpoints_data.buzzer_melody_4);
+                              
 
                               //меняем цвет уставки если значение изменено но не сохранено в EEPROM
                               if(old_setpoints_data.buzzer_out_mode != setpoints_data.buzzer_out_mode)myNex.writeNum("p11t6.pco", YELLOW);
                               else myNex.writeNum("p11t6.pco", WHITE);
-                              if(old_setpoints_data.buzzer_melody_1 != setpoints_data.buzzer_melody_1)myNex.writeNum("p11n0.pco", YELLOW);
+                              if(old_setpoints_data.shutdown_delay != setpoints_data.shutdown_delay)myNex.writeNum("p11n0.pco", YELLOW);
                               else myNex.writeNum("p11n0.pco", WHITE);
-                              if(old_setpoints_data.buzzer_melody_2 != setpoints_data.buzzer_melody_2)myNex.writeNum("p11n1.pco", YELLOW);
+                              if(old_setpoints_data.scrreen_off_delay != setpoints_data.scrreen_off_delay)myNex.writeNum("p11n1.pco", YELLOW);
                               else myNex.writeNum("p11n1.pco", WHITE);
-                              if(old_setpoints_data.buzzer_melody_3 != setpoints_data.buzzer_melody_3)myNex.writeNum("p11n2.pco", YELLOW);
-                              else myNex.writeNum("p11n2.pco", WHITE);
-                              if(old_setpoints_data.buzzer_melody_4 != setpoints_data.buzzer_melody_4)myNex.writeNum("p11n3.pco", YELLOW);
-                              else myNex.writeNum("p11n3.pco", WHITE);
+                             // if(old_setpoints_data.buzzer_melody_3 != setpoints_data.buzzer_melody_3)myNex.writeNum("p11n2.pco", YELLOW);
+                             // else myNex.writeNum("p11n2.pco", WHITE);
+                             // if(old_setpoints_data.buzzer_melody_4 != setpoints_data.buzzer_melody_4)myNex.writeNum("p11n3.pco", YELLOW);
+                             // else myNex.writeNum("p11n3.pco", WHITE);
                               
                               switch (current_item)
                               {
@@ -969,7 +965,7 @@ void fnMenuDynamicDataUpdate(void){
                                           myNex.writeNum("p11t5.pco", WHITE);
                                           variable_value = &setpoints_data.buzzer_out_mode;
                                           var_min_value = 0;
-                                          var_max_value = 2; 
+                                          var_max_value = 1; 
                                     break;
 
                                     // ПОКА НЕ ИСПОЛЬЗУЕТСЯ
@@ -979,9 +975,9 @@ void fnMenuDynamicDataUpdate(void){
                                           myNex.writeNum("p11t3.pco", WHITE);
                                           myNex.writeNum("p11t4.pco", WHITE);
                                           myNex.writeNum("p11t5.pco", WHITE);
-                                          variable_value = &setpoints_data.buzzer_melody_1;
+                                          variable_value = &setpoints_data.shutdown_delay;
                                           var_min_value = 1;
-                                          var_max_value = 4; 
+                                          var_max_value = 255; 
                                     break;
 
                                     case 3:
@@ -990,9 +986,9 @@ void fnMenuDynamicDataUpdate(void){
                                           myNex.writeNum("p11t3.pco", BLUE);
                                           myNex.writeNum("p11t4.pco", WHITE);
                                           myNex.writeNum("p11t5.pco", WHITE);
-                                          variable_value = &setpoints_data.buzzer_melody_2;
+                                          variable_value = &setpoints_data.scrreen_off_delay;
                                           var_min_value = 1;
-                                          var_max_value = 4; 
+                                          var_max_value = 180; 
                                     break;
 
                                     case 4:
@@ -1090,7 +1086,7 @@ else timerPumpOffDelay.stop();
 } 
 //**********************************************************************************
 
-// trigger 7 сканнер 1Wire
+// trigger 7 сканнер 1Wire (перенесен в задачу)
 void  trigger7 (){
 
       flag_ow_scan_to_start = TRUE;  
@@ -1239,8 +1235,7 @@ void fnPumpControl(void){
 //*******************************************************************************
 
 //Inputs Update 
-
-   void fnInputsUpdate(void) {                  // функция обновления состояния входов (раз в  мсек)
+   void fnInputsUpdate(void) {                  // функция обновления состояния входов (раз в   мсек)
 
       main_data.door_switch_state = !digitalRead(DOOR_SWITCH_INPUT_1);           
       main_data.proximity_sensor_state = !digitalRead(PROXIMITY_SENSOR_INPUT_2);
@@ -1257,6 +1252,7 @@ void fnPumpControl(void){
       digitalWrite(LIGHT_OUTPUT_2, main_data.light_output_state); //
       digitalWrite(CONVERTER_OUTPUT_3, main_data.converter_output_state);
       digitalWrite(SENSORS_SUPPLY_5v, main_data.sensors_supply_output_state);
+      digitalWrite(MAIN_SUPPLY_OUT, main_data.main_supply_output_state);
    
    }
 //*******************************************************************************
@@ -1618,11 +1614,12 @@ float fnVoltageRead(void){
 
             //*******
             fnWaterLevelControl();
-
+            main_data.main_supply_output_state = fnMainPowerControl();
+            main_data.sensors_supply_output_state = fnSensorsPowerControl();
 
             fnOutputsUpdate();
 
-            vTaskDelay(1);  // 15ms
+            vTaskDelay(1);  // ms
       }
 
  }
@@ -1838,3 +1835,15 @@ void TaskOwScanner( void *pvParameters __attribute__((unused)) )  // This is a T
       }
 }
 //********************************************************************
+
+// Main power control + (sleep mode)
+bool fnMainPowerControl(void){
+
+     if(main_data.ignition_switch_state) {
+            timerShutdownDelay.setInterval(setpoints_data.shutdown_delay * 60000);
+            return true;
+      }  
+
+      if( timerShutdownDelay.isReady() ) return false;   
+}
+//**********************************************************************
