@@ -72,6 +72,7 @@
 #define LOW_WASHER_WATER_LEVEL_INPUT_4      57       //A3
 #define SUPPLY_VOLTAGE_INPUT                A4       //A4
 #define WATER_FLOW_SENSOR                    5       //YF-S201 ПОКА НЕ ИСПОЛЬЗУЕТСЯ
+#define BUTTON_ON_BOARD                     10
 
 //outputs
 #define WATER_PUMP_OUTPUT_1      22 // 
