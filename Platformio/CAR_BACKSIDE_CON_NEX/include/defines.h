@@ -73,11 +73,12 @@
 #define WATER_FLOW_SENSOR                    5       //YF-S201 ПОКА НЕ ИСПОЛЬЗУЕТСЯ
 
 //outputs
-#define WATER_PUMP_OUTPUT_1      22 // 6
-#define LIGHT_OUTPUT_2           23 // 9
-#define CONVERTER_OUTPUT_3       24 // 10
-#define SENSORS_SUPPLY_5v         7 // 11
-#define BUZZER                    2 // 12
+#define WATER_PUMP_OUTPUT_1      22 // 
+#define LIGHT_OUTPUT_2           23 // 
+#define CONVERTER_OUTPUT_3       24 // 
+#define SENSORS_SUPPLY_5v         7 // 
+#define MAIN_SUPPLY_OUT			  9 //
+#define BUZZER                    2 // 
 #define BUILTIN_LED              13
 #define WDT_RESET_OUT             8  
 
