@@ -51,8 +51,6 @@ uint8_t pjon_wls_liter_old;     // предыдущее значение кол�
 // light
 bool flag_timer_light_delay_off_started;    // флаг состояния таймера выключения света
 
-//screen
-uint16_t screen_off_delay = 3000; // 3sec
 
 // menu
 //------------Setpoints variables --------------------------------------
