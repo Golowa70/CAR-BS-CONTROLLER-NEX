@@ -32,7 +32,7 @@
 #define PJONSET_PAGE           8
 #define ONEWIRESCANNER_PAGE    9
 #define MODBUSSET_PAGE        10
-#define BUZZERSET_PAGE        11
+#define ADDITIONALSET_PAGE    11
 #define MAX_PAGES             20
 
 #define CONNECTED          false
