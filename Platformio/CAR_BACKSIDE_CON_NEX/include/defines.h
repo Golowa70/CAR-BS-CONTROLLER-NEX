@@ -49,6 +49,7 @@
 //communications
 #define PJON_BUS_PIN         3
 #define ONE_WIRE_PIN         4
+#define DE_RS485_PIN         6
 
 // water level sensor
 #define WATER_LEVEL_LESS_THEN_25      1      
