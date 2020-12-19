@@ -13,6 +13,8 @@ bool proximity_sensor_old_state;              // предыдущее состо
 
 bool flag_ds18b20_update;                     // флаг обновлени чтения температуры с ds18b20 (пока не используется)
 
+bool flag_convOff_due_voltage;
+bool flag_convOff_due_ign_switch;
 
 //Pjon variables 
 /*
