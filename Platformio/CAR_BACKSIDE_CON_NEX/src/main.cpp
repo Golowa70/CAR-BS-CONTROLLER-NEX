@@ -110,6 +110,7 @@ bool fnMainPowerControl(void);
 
 void setup() {
 
+  digitalWrite(MAIN_SUPPLY_OUT,HIGH);
   //меняем скорость Nextion 
   //Serial1.begin(19200); // нынешняя скорость
   //Serial1.print("bauds=115200"); // новая скорость
@@ -190,7 +191,8 @@ void setup() {
   //ModbusRTUServer.configureHoldingRegisters(0x00, 5); 
 
   pjon_float_sensor_fault_cnt = setpoints_data.pjon_float_fault_timer; //
-
+  
+  timerConverterShutdownDelay.setInterval((setpoints_data.converter_shutdown_delay) * 60000);
 
   //rtttl :: begin (BUZZER, melody_2);   // пиликаем при старте
 
@@ -268,7 +270,7 @@ void setup() {
     ,  "OwScanner"  // A name just for humans
     ,  128  // This stack size can be checked & adjusted by reading the Stack Highwater
     ,  NULL
-    ,  2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+    ,  3  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
     ,  NULL ); 
 
 
@@ -1293,9 +1295,9 @@ void fnPumpControl(void){
 //*******************************************************************************
 
 //convreter control
-bool fnConverterControl(uint8_t voltage, uint8_t mode){
+bool fnConverterControl(float voltage, uint8_t mode){
     voltage = voltage * 10;
-     static bool state = LOW;
+     static bool state = HIGH; // изначально (после старта) включен
      static bool flag_timer_converter_started = LOW;
 
      switch (mode)
@@ -1316,7 +1318,8 @@ bool fnConverterControl(uint8_t voltage, uint8_t mode){
 
             case AUTO_MODE:
                         if(voltage >= setpoints_data.converter_voltage_on ){  // 
-                              state = HIGH; // если напряжение в пределах нормы включаем преобразователь
+                             if(! flag_convOff_due_ign_switch) state = HIGH; // если напряжение в пределах нормы включаем преобразователь
+                              flag_convOff_due_voltage = LOW;
                               timerConverterOffDelay.stop(); // останавливваем таймер выключения 
                               flag_timer_converter_started = LOW; //
                         }
@@ -1329,6 +1332,7 @@ bool fnConverterControl(uint8_t voltage, uint8_t mode){
 
                               if(flag_timer_converter_started && timerConverterOffDelay.isReady()){
                                     state = LOW; 
+                                    flag_convOff_due_voltage = HIGH;
                                     timerConverterOffDelay.stop(); // останавливаем таймер выключения
                                     flag_timer_converter_started = LOW; //
                               }
@@ -1336,10 +1340,17 @@ bool fnConverterControl(uint8_t voltage, uint8_t mode){
                         }   
 
                         // отключение по таймеру после выключения зажигания
-                        if(main_data.ignition_switch_state) timerConverterShutdownDelay.setInterval(setpoints_data.converter_shutdown_delay * 1000);           
+                        if(main_data.ignition_switch_state) {
+                              flag_convOff_due_ign_switch = LOW;
+                              if(! flag_convOff_due_voltage ) state = HIGH;
+                              timerConverterShutdownDelay.setInterval((setpoints_data.converter_shutdown_delay) * 60000);           
+                        }
                         else
                         {
-                              if (timerConverterShutdownDelay.isReady()) state = LOW;                              
+                              if (timerConverterShutdownDelay.isReady()) {
+                                    state = LOW;
+                                    flag_convOff_due_ign_switch = HIGH;
+                              }                                    
                         }
                         
 
@@ -1790,6 +1801,88 @@ void TaskOwScanner( void *pvParameters __attribute__((unused)) )  // This is a T
 
                         if(count_sensors) 
                         {
+                              if(count_sensors<3) {
+                                    
+                                    switch (count_sensors){
+
+                                          case 0:
+                                                for (uint8_t j = 0; j < 8; j++)
+                                                { 
+                                                setpoints_data.sensors_ID_array[INSIDE_SENSOR-1][j] = 0;  thermometerID_1[j] = 0;
+                                                tempString2 = String(0,HEX);     
+                                                tempString += tempString2;
+                                                if (j < 7)tempString += ". ";
+                                                }
+                                                myNex.writeStr("p9t2.txt", tempString);
+                                                tempString = ""; tempString2 = "";
+
+                                                for (uint8_t j = 0; j < 8; j++)
+                                                { 
+                                                setpoints_data.sensors_ID_array[OUTSIDE_SENSOR-1][j] = 0;  thermometerID_2[j] = 0;
+                                                tempString2 = String(0,HEX);     
+                                                tempString += tempString2;
+                                                if (j < 7)tempString += ". ";
+                                                }
+                                                myNex.writeStr("p9t3.txt", tempString);
+                                                tempString = ""; tempString2 = "";
+
+                                                for (uint8_t j = 0; j < 8; j++)
+                                                { 
+                                                setpoints_data.sensors_ID_array[SPARE_SENSOR-1][j] = 0;  thermometerID_3[j] = 0;
+                                                tempString2 = String(0,HEX);     
+                                                tempString += tempString2;
+                                                if (j < 7)tempString += ". ";
+                                                }
+                                                myNex.writeStr("p9t4.txt", tempString);
+                                                tempString = ""; tempString2 = "";
+
+                                                break;
+
+                                          case 1:
+                                                for (uint8_t j = 0; j < 8; j++)
+                                                { 
+                                                setpoints_data.sensors_ID_array[OUTSIDE_SENSOR-1][j] = 0;  thermometerID_2[j] = 0;
+                                                tempString2 = String(0,HEX);     
+                                                tempString += tempString2;
+                                                if (j < 7)tempString += ". ";
+                                                }
+                                                myNex.writeStr("p9t3.txt", tempString);
+                                                tempString = ""; tempString2 = "";
+
+                                                for (uint8_t j = 0; j < 8; j++)
+                                                { 
+                                                setpoints_data.sensors_ID_array[SPARE_SENSOR-1][j] = 0;  thermometerID_3[j] = 0;
+                                                tempString2 = String(0,HEX);     
+                                                tempString += tempString2;
+                                                if (j < 7)tempString += ". ";
+                                                }
+                                                myNex.writeStr("p9t4.txt", tempString);
+                                                tempString = ""; tempString2 = "";
+
+                                                break;
+
+                                          case 2:
+                                                for (uint8_t j = 0; j < 8; j++)
+                                                { 
+                                                setpoints_data.sensors_ID_array[SPARE_SENSOR-1][j] = 0;  thermometerID_3[j] = 0;
+                                                tempString2 = String(0,HEX);     
+                                                tempString += tempString2;
+                                                if (j < 7)tempString += ". ";
+                                                }
+                                                myNex.writeStr("p9t4.txt", tempString);
+                                                tempString = ""; tempString2 = "";
+                                                break;
+
+                                         
+
+                                          default :
+                                                break;
+
+
+                                    }
+
+                              }
+
                               tempString = "FOUND ";
                               tempString2 = String(count_sensors, HEX);
                               tempString += tempString2;
@@ -1801,7 +1894,7 @@ void TaskOwScanner( void *pvParameters __attribute__((unused)) )  // This is a T
                               
 
                               temp_sensors.requestTemperatures();
-                              delay(1000);
+                             // delay(1000);
                               main_data.inside_temperature = temp_sensors.getTempC(thermometerID_1);
                               main_data.outside_temperature = temp_sensors.getTempC(thermometerID_2);
                               main_data.spare_temperature = temp_sensors.getTempC(thermometerID_3);
