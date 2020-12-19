@@ -1319,7 +1319,7 @@ bool fnConverterControl(float voltage, uint8_t mode){
             case AUTO_MODE:
                         if(voltage >= setpoints_data.converter_voltage_on ){  // 
                              if(! flag_convOff_due_ign_switch) state = HIGH; // если напряжение в пределах нормы включаем преобразователь
-                              flag_convOff_due_voltage = LOW;
+                              flag_convOff_due_voltage = LOW; // флаг что было отключение по низкому напряжению
                               timerConverterOffDelay.stop(); // останавливваем таймер выключения 
                               flag_timer_converter_started = LOW; //
                         }
@@ -1332,7 +1332,7 @@ bool fnConverterControl(float voltage, uint8_t mode){
 
                               if(flag_timer_converter_started && timerConverterOffDelay.isReady()){
                                     state = LOW; 
-                                    flag_convOff_due_voltage = HIGH;
+                                    flag_convOff_due_voltage = HIGH; // флаг что было отключение по низкому напряжению
                                     timerConverterOffDelay.stop(); // останавливаем таймер выключения
                                     flag_timer_converter_started = LOW; //
                               }
@@ -1341,7 +1341,7 @@ bool fnConverterControl(float voltage, uint8_t mode){
 
                         // отключение по таймеру после выключения зажигания
                         if(main_data.ignition_switch_state) {
-                              flag_convOff_due_ign_switch = LOW;
+                              flag_convOff_due_ign_switch = LOW; //сброс флага что было отключение по ignition switch
                               if(! flag_convOff_due_voltage ) state = HIGH;
                               timerConverterShutdownDelay.setInterval((setpoints_data.converter_shutdown_delay) * 60000);           
                         }
@@ -1349,7 +1349,7 @@ bool fnConverterControl(float voltage, uint8_t mode){
                         {
                               if (timerConverterShutdownDelay.isReady()) {
                                     state = LOW;
-                                    flag_convOff_due_ign_switch = HIGH;
+                                    flag_convOff_due_ign_switch = HIGH; //установка флага что было отключение по ignition switch
                               }                                    
                         }
                         
@@ -1420,30 +1420,28 @@ float fnVoltageRead(void){
 
             case WATER_LEVEL_50 :
                                  main_data.water_level_percent = 50;
-                                 main_data.water_level_liter = 20;
+                                 
                                  //tone(BUZZER,1000, 100);
                                  break;
 
             case WATER_LEVEL_75 :
                                  main_data.water_level_percent = 75;
-                                 main_data.water_level_liter = 30;
+                                 
                                  //tone(BUZZER,1000, 100);
                                  break;
                
             case WATER_LEVEL_100 :              //если максимум...
                                  main_data.water_level_percent = 100;
-                                 main_data.water_level_liter = 40;
+                                 
                                  //tone(BUZZER,1000, 100);
                                  break;
 
             case WATER_LEVEL_SENSOR_DEFECTIVE :  // если сенсор неисправен...
                                  main_data.water_level_percent = 0;
-                                 main_data.water_level_liter = 0;
                                  break;
 
             default:
                   main_data.water_level_percent = 0;
-                  //main_data.water_level_liter = 0;
                   break;
       }
 
@@ -1451,7 +1449,8 @@ float fnVoltageRead(void){
 
    }
 
-   main_data.water_level_liter = pjon_wfs_liter_receive.data;
+   //main_data.water_level_liter = pjon_wfs_liter_receive.data;
+   main_data.water_level_liter = (setpoints_data.water_tank_capacity * main_data.water_level_percent * 0.01) ;
 
  }
 //*******************************************************************************************
