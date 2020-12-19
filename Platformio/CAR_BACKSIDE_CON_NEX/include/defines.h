@@ -33,7 +33,7 @@
 #define ONEWIRESCANNER_PAGE    9
 #define MODBUSSET_PAGE        10
 #define ADDITIONALSET_PAGE    11
-#define MAX_PAGES             20
+#define MAX_PAGES             20 
 
 #define CONNECTED          false
 #define DISCONNECTED        true
