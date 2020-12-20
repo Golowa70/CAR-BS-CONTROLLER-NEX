@@ -38,7 +38,6 @@ GTimer timerSensorsUpdate; //таймер период обновления да
 GTimer timerPumpOffDelay;  //
 GTimer timerConverterOffDelay;
 GTimer timerConverterShutdownDelay;
-GTimer timerLightOffDelay;
 GTimer timerPjonFloatFault;
 GTimer timerPjonTransmittPeriod;
 GTimer timerShutdownDelay;
@@ -93,7 +92,7 @@ void fnPumpControl(void);
 void fnOutputsUpdate(void);  // функция обновления выходов
 void fnInputsUpdate(void);   // функция обновления входов
 bool fnEEpromInit(void);     // функция загрузки уставок и проверка eeprom при старте
-bool fnConverterControl(uint8_t voltage, uint8_t mode);
+bool fnConverterControl(float voltage, uint8_t mode);
 float fnVoltageRead(void);
 void pj_receiver_function(uint8_t *payload, uint16_t length, const PJON_Packet_Info &packet_info);
 void fnPjonSender(void);
@@ -166,12 +165,12 @@ void setup() {
   timerSensorsUpdate.setInterval(SENSORS_UPDATE_PERIOD); 
   timerPumpOffDelay.setMode(MANUAL); 
   timerConverterOffDelay.setMode(MANUAL);
+   timerConverterOffDelay.setInterval((setpoints_data.converter_off_delay) * MINUTE);
   timerConverterShutdownDelay.setMode(MANUAL);
-  timerLightOffDelay.setMode(MANUAL);
   timerPjonFloatFault.setInterval(FLOAT_FAULT_TIME);
-  timerPjonTransmittPeriod.setInterval(setpoints_data.pjon_transmitt_period * 1000);
+  timerPjonTransmittPeriod.setInterval(setpoints_data.pjon_transmitt_period * SECOND);
   timerShutdownDelay.setMode(MANUAL);
-  timerShutdownDelay.setInterval(setpoints_data.shutdown_delay * 60000);
+  timerShutdownDelay.setInterval(setpoints_data.shutdown_delay * MINUTE);
   timerScreenOffDelay.setMode(MANUAL);
   timerScreenOffDelay.setInterval(10000);
   timerMenuDynamicUpdate.setInterval(MENU_UPDATE_PERIOD);
@@ -192,7 +191,7 @@ void setup() {
 
   pjon_float_sensor_fault_cnt = setpoints_data.pjon_float_fault_timer; //
   
-  timerConverterShutdownDelay.setInterval((setpoints_data.converter_shutdown_delay) * 60000);
+  timerConverterShutdownDelay.setInterval((setpoints_data.converter_shutdown_delay) * MINUTE);
 
   //rtttl :: begin (BUZZER, melody_2);   // пиликаем при старте
 
@@ -210,7 +209,7 @@ void setup() {
   xTaskCreate(
     TaskLoop
     ,  "Loop"  // A name just for humans
-    ,  512  // This stack size can be checked & adjusted by reading the Stack Highwater
+    ,  544  // This stack size can be checked & adjusted by reading the Stack Highwater
     ,  NULL
     ,  1  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
     ,  NULL );
@@ -589,7 +588,7 @@ void fnMenuDynamicDataUpdate(void){
                                                 myNex.writeNum("p6t5.pco", WHITE);
                                                 variable_value = &setpoints_data.converter_off_delay;
                                                 var_min_value = 0;
-                                                var_max_value = 180; 
+                                                var_max_value = 32; //min
                                                 break;
 
                                           case 2:
@@ -1064,7 +1063,7 @@ flag_value_changed = HIGH;
 void  trigger4 (){
 EEPROM.updateBlock(EEPROM_SETPOINTS_ADDRESS, setpoints_data);
 memcpy(&old_setpoints_data, &setpoints_data, sizeof(Setpoints));
-timerPjonTransmittPeriod.setInterval(setpoints_data.pjon_transmitt_period * 1000); // обновление таймингов
+timerPjonTransmittPeriod.setInterval(setpoints_data.pjon_transmitt_period * SECOND); // обновление таймингов
 flag_value_changed = LOW;
 }
 //**********************************************************************************
@@ -1082,7 +1081,7 @@ void  trigger6 (){
 current_item = myNex.readNumber("currentItem.val");
 current_item = myNex.readNumber("currentItem.val");    
 main_data.pump_output_state = 1 - main_data.pump_output_state;
-if(main_data.pump_output_state)timerPumpOffDelay.setInterval(setpoints_data.pump_off_delay * 1000);
+if(main_data.pump_output_state)timerPumpOffDelay.setInterval(setpoints_data.pump_off_delay * SECOND);
 else timerPumpOffDelay.stop();
 
 } 
@@ -1214,7 +1213,7 @@ void fnPumpControl(void){
             if( (main_data.proximity_sensor_state == HIGH) && (proximity_sensor_old_state == LOW)){
                   main_data.pump_output_state = 1 - main_data.pump_output_state;
                   if ( !rtttl::isPlaying() ) rtttl :: begin (BUZZER, melody_1);
-                  if(main_data.pump_output_state)timerPumpOffDelay.setInterval(setpoints_data.pump_off_delay * 1000);
+                  if(main_data.pump_output_state)timerPumpOffDelay.setInterval(setpoints_data.pump_off_delay * SECOND);
                   else timerPumpOffDelay.stop();
             }  
       }
@@ -1324,26 +1323,28 @@ bool fnConverterControl(float voltage, uint8_t mode){
                               flag_timer_converter_started = LOW; //
                         }
 
-                        if(main_data.converter_output_state == HIGH){  //   
-                              if((voltage <= setpoints_data.converter_voltage_off  ) && (flag_timer_converter_started == LOW)) { // если напряжение меньше нормы ...               
-                                    timerConverterOffDelay.setInterval(setpoints_data.converter_off_delay * 1000); // заряжаем таймер на выключение
-                                    flag_timer_converter_started = HIGH; //           
-                              } 
+                         
+                        if( voltage > setpoints_data.converter_voltage_off ) { //               
+                              timerConverterOffDelay.setInterval((setpoints_data.converter_off_delay) * MINUTE); // заряжаем таймер на выключение
 
-                              if(flag_timer_converter_started && timerConverterOffDelay.isReady()){
+                        }
+
+                        else {
+
+                              if( timerConverterOffDelay.isReady()){
                                     state = LOW; 
                                     flag_convOff_due_voltage = HIGH; // флаг что было отключение по низкому напряжению
                                     timerConverterOffDelay.stop(); // останавливаем таймер выключения
-                                    flag_timer_converter_started = LOW; //
+                                    
                               }
-
-                        }   
+                        }
+                          
 
                         // отключение по таймеру после выключения зажигания
                         if(main_data.ignition_switch_state) {
                               flag_convOff_due_ign_switch = LOW; //сброс флага что было отключение по ignition switch
                               if(! flag_convOff_due_voltage ) state = HIGH;
-                              timerConverterShutdownDelay.setInterval((setpoints_data.converter_shutdown_delay) * 60000);           
+                              timerConverterShutdownDelay.setInterval((setpoints_data.converter_shutdown_delay) * HOUR);           
                         }
                         else
                         {
@@ -1557,7 +1558,7 @@ float fnVoltageRead(void){
 
             //****** таймер на отключение экрана
             if(main_data.door_switch_state){
-                  timerScreenOffDelay.setInterval(setpoints_data.scrreen_off_delay * 1000);
+                  timerScreenOffDelay.setInterval(setpoints_data.scrreen_off_delay * SECOND);
             }
             else
             {
@@ -1931,7 +1932,7 @@ void TaskOwScanner( void *pvParameters __attribute__((unused)) )  // This is a T
 bool fnMainPowerControl(void){
 
      if(main_data.ignition_switch_state) {
-            timerShutdownDelay.setInterval(setpoints_data.shutdown_delay * 60000);
+            timerShutdownDelay.setInterval(setpoints_data.shutdown_delay * MINUTE);
             return true;
       }  
       else {
