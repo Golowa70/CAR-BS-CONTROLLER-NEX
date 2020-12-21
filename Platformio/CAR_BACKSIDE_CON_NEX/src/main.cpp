@@ -364,7 +364,7 @@ void fnMenuStaticDataUpdate(void){
 
                   break;   
 
-            case ADDITIONALSET_PAGE:
+            case BASESET_PAGE:
 
                   break;             
             
@@ -382,15 +382,15 @@ void fnMenuDynamicDataUpdate(void){
       switch (myNex.currentPageId) {
             
             case MAIN_PAGE:
-                  myNex. writeNum ( "water.val" , main_data.water_level_liter );  // 
-                  myNex. writeNum ( "OutsideTemp.val" , main_data.outside_temperature );
-                  myNex. writeNum ( "InsideTemp.val" , main_data.inside_temperature );
-                  myNex. writeNum ( "batVolt.val" , main_data.battery_voltage * 10); // main_data.battery_voltage
+                  myNex. writeNum ( F("water.val") , main_data.water_level_liter );  // 
+                  myNex. writeNum ( F("OutsideTemp.val") , main_data.outside_temperature );
+                  myNex. writeNum ( F("InsideTemp.val") , main_data.inside_temperature );
+                  myNex. writeNum ( F("batVolt.val") , main_data.battery_voltage * 10); // main_data.battery_voltage
                   break;
 
             case WATER_PAGE:
-                  if(main_data.pump_output_state) myNex. writeNum ("nxPumpState.val", HIGH);
-                  else myNex. writeNum ("nxPumpState.val", LOW);
+                  if(main_data.pump_output_state) myNex. writeNum (F("nxPumpState.val"), HIGH);
+                  else myNex. writeNum (F("nxPumpState.val"), LOW);
 
                   myNex. writeNum ("p1n0.val", main_data.water_level_liter);
                   myNex. writeNum ("p1n1.val", main_data.water_level_percent);
@@ -597,7 +597,7 @@ void fnMenuDynamicDataUpdate(void){
                                                 myNex.writeNum("p6t4.pco", WHITE);
                                                 myNex.writeNum("p6t5.pco", WHITE);
                                                 variable_value = &setpoints_data.converter_shutdown_delay;
-                                                var_min_value = 0;
+                                                var_min_value = 1;
                                                 var_max_value = 180; // min
                                                 break;                                               
 
@@ -921,7 +921,7 @@ void fnMenuDynamicDataUpdate(void){
 
             break;   
 
-            case ADDITIONALSET_PAGE:    
+            case BASESET_PAGE:    
                               //обновляем динамические параметры страницы
                               switch (setpoints_data.buzzer_out_mode)
                               {
@@ -937,10 +937,10 @@ void fnMenuDynamicDataUpdate(void){
                                     break;
                               }
                               
-                              myNex. writeNum("p11n0.val", setpoints_data.shutdown_delay);
-                              myNex. writeNum("p11n1.val", setpoints_data.scrreen_off_delay);
-                             // myNex. writeNum("p11n2.val", setpoints_data.buzzer_melody_3);
-                             // myNex. writeNum("p11n3.val", setpoints_data.buzzer_melody_4);
+                              myNex. writeNum(F("p11n0.val"), setpoints_data.shutdown_delay);
+                              myNex. writeNum(F("p11n1.val"), setpoints_data.scrreen_off_delay);
+                              myNex. writeNum(F("p11n2.val"), setpoints_data.voltage_correction);
+                              myNex. writeNum(F("p11n3.val"), setpoints_data.lcd_brightness);
                               
 
                               //меняем цвет уставки если значение изменено но не сохранено в EEPROM
@@ -950,19 +950,19 @@ void fnMenuDynamicDataUpdate(void){
                               else myNex.writeNum("p11n0.pco", WHITE);
                               if(old_setpoints_data.scrreen_off_delay != setpoints_data.scrreen_off_delay)myNex.writeNum("p11n1.pco", YELLOW);
                               else myNex.writeNum("p11n1.pco", WHITE);
-                             // if(old_setpoints_data.buzzer_melody_3 != setpoints_data.buzzer_melody_3)myNex.writeNum("p11n2.pco", YELLOW);
-                             // else myNex.writeNum("p11n2.pco", WHITE);
-                             // if(old_setpoints_data.buzzer_melody_4 != setpoints_data.buzzer_melody_4)myNex.writeNum("p11n3.pco", YELLOW);
-                             // else myNex.writeNum("p11n3.pco", WHITE);
+                              if(old_setpoints_data.voltage_correction != setpoints_data.voltage_correction)myNex.writeNum("p11n2.pco", YELLOW);
+                              else myNex.writeNum("p11n2.pco", WHITE);
+                              if(old_setpoints_data.lcd_brightness != setpoints_data.lcd_brightness)myNex.writeNum("p11n3.pco", YELLOW);
+                              else myNex.writeNum("p11n3.pco", WHITE);
                               
                               switch (current_item)
                               {
                                     case 1:
-                                          myNex.writeNum("p11t1.pco", BLUE);
-                                          myNex.writeNum("p11t2.pco", WHITE);
-                                          myNex.writeNum("p11t3.pco", WHITE);
-                                          myNex.writeNum("p11t4.pco", WHITE);
-                                          myNex.writeNum("p11t5.pco", WHITE);
+                                          myNex.writeNum(F("p11t1.pco"), BLUE);
+                                          myNex.writeNum(F("p11t2.pco"), WHITE);
+                                          myNex.writeNum(F("p11t3.pco"), WHITE);
+                                          myNex.writeNum(F("p11t4.pco"), WHITE);
+                                          myNex.writeNum(F("p11t5.pco"), WHITE);
                                           variable_value = &setpoints_data.buzzer_out_mode;
                                           var_min_value = 0;
                                           var_max_value = 1; 
@@ -977,7 +977,7 @@ void fnMenuDynamicDataUpdate(void){
                                           myNex.writeNum("p11t5.pco", WHITE);
                                           variable_value = &setpoints_data.shutdown_delay;
                                           var_min_value = 1;
-                                          var_max_value = 255; 
+                                          var_max_value = 24; // hours
                                     break;
 
                                     case 3:
@@ -988,7 +988,7 @@ void fnMenuDynamicDataUpdate(void){
                                           myNex.writeNum("p11t5.pco", WHITE);
                                           variable_value = &setpoints_data.scrreen_off_delay;
                                           var_min_value = 1;
-                                          var_max_value = 180; 
+                                          var_max_value = 180; // min
                                     break;
 
                                     case 4:
@@ -997,9 +997,9 @@ void fnMenuDynamicDataUpdate(void){
                                           myNex.writeNum("p11t3.pco", WHITE);
                                           myNex.writeNum("p11t4.pco", BLUE);
                                           myNex.writeNum("p11t5.pco", WHITE);
-                                          variable_value = &setpoints_data.buzzer_melody_3;
-                                          var_min_value = 1;
-                                          var_max_value = 4; 
+                                          variable_value = &setpoints_data.voltage_correction;
+                                          var_min_value = 0;
+                                          var_max_value = 255; 
                                     break;
 
                                     case 5:
@@ -1008,9 +1008,9 @@ void fnMenuDynamicDataUpdate(void){
                                           myNex.writeNum("p11t3.pco", WHITE);
                                           myNex.writeNum("p11t4.pco", WHITE);
                                           myNex.writeNum("p11t5.pco", BLUE);
-                                          variable_value = &setpoints_data.buzzer_melody_4;
-                                          var_min_value = 1;
-                                          var_max_value = 4; 
+                                          variable_value = &setpoints_data.lcd_brightness;
+                                          var_min_value = 10;
+                                          var_max_value = 100; 
                                     break;
 
                                     default:
@@ -1296,7 +1296,6 @@ void fnPumpControl(void){
 bool fnConverterControl(float voltage, uint8_t mode){
     voltage = voltage * 10;
      static bool state = HIGH; // изначально (после старта) включен
-     static bool flag_timer_converter_started = LOW;
 
      switch (mode)
      {
@@ -1304,14 +1303,12 @@ bool fnConverterControl(float voltage, uint8_t mode){
                         state = LOW; 
                         timerConverterOffDelay.stop(); // останавливаем таймер выключения
                         timerConverterShutdownDelay.stop(); //
-                        flag_timer_converter_started = LOW; //
                         break;
                         
             case ON_MODE:
                         state = HIGH;
                         timerConverterOffDelay.stop(); // останавливаем таймер выключения
                         timerConverterShutdownDelay.stop();
-                        flag_timer_converter_started = LOW; //
                         break;
 
             case AUTO_MODE:
@@ -1319,12 +1316,12 @@ bool fnConverterControl(float voltage, uint8_t mode){
                              if(! flag_convOff_due_ign_switch) state = HIGH; // если напряжение в пределах нормы включаем преобразователь
                               flag_convOff_due_voltage = LOW; // флаг что было отключение по низкому напряжению
                               timerConverterOffDelay.stop(); // останавливваем таймер выключения 
-                              flag_timer_converter_started = LOW; //
+
                         }
 
                          
                         if( voltage > setpoints_data.converter_voltage_off ) { //               
-                              timerConverterOffDelay.setInterval((setpoints_data.converter_off_delay) * MINUTE); // заряжаем таймер на выключение
+                              timerConverterOffDelay.setInterval(((uint32_t)setpoints_data.converter_off_delay) * MINUTE); // заряжаем таймер на выключение
 
                         }
 
@@ -1343,7 +1340,7 @@ bool fnConverterControl(float voltage, uint8_t mode){
                         if(main_data.ignition_switch_state) {
                               flag_convOff_due_ign_switch = LOW; //сброс флага что было отключение по ignition switch
                               if(! flag_convOff_due_voltage ) state = HIGH;
-                              timerConverterShutdownDelay.setInterval((setpoints_data.converter_shutdown_delay) * HOUR);           
+                              timerConverterShutdownDelay.setInterval(((uint32_t)setpoints_data.converter_shutdown_delay) * MINUTE);           
                         }
                         else
                         {
@@ -1369,7 +1366,7 @@ float fnVoltageRead(void){
 
       float voltage;
      // voltage =  (analogRead(SUPPLY_VOLTAGE_INPUT) * DIVISION_RATIO_VOLTAGE_INPUT); // 
-     voltage = ( voltage_filter.filtered(analogRead(SUPPLY_VOLTAGE_INPUT)) * DIVISION_RATIO_VOLTAGE_INPUT);
+     voltage = ( voltage_filter.filtered(analogRead(SUPPLY_VOLTAGE_INPUT) - 127 + setpoints_data.voltage_correction) * DIVISION_RATIO_VOLTAGE_INPUT); //
       return voltage;
 }
 //******************************************************************************************
@@ -1557,7 +1554,7 @@ float fnVoltageRead(void){
 
             //****** таймер на отключение экрана
             if(main_data.door_switch_state){
-                  timerScreenOffDelay.setInterval(setpoints_data.scrreen_off_delay * SECOND);
+                  timerScreenOffDelay.setInterval((uint32_t)setpoints_data.scrreen_off_delay * SECOND);
             }
             else
             {
@@ -1931,7 +1928,7 @@ void TaskOwScanner( void *pvParameters __attribute__((unused)) )  // This is a T
 bool fnMainPowerControl(void){
 
      if(main_data.ignition_switch_state) {
-            timerShutdownDelay.setInterval(setpoints_data.shutdown_delay * MINUTE);
+            timerShutdownDelay.setInterval((uint32_t)setpoints_data.shutdown_delay * HOUR);
             return true;
       }  
       else {
