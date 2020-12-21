@@ -116,7 +116,7 @@ void setup() {
   //Serial1.write(0xff);
   //Serial1.write(0xff);
   //Serial1.write(0xff); 
-  //delay(1000);            //задержка
+  delay(1000);            //задержка
   myNex.begin(NEXTION_BAUD_RATE); // 
   myNex.writeStr("page 12");
   myNex.writeStr("page 12");
