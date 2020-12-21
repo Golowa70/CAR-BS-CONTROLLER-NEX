@@ -52,7 +52,7 @@ void fnDefaultSetpointsInit(void){
     setpoints_data.buzzer_melody_2 = 2;
     setpoints_data.buzzer_melody_3 = 3;
     setpoints_data.buzzer_melody_4 = 4;
-    setpoints_data.voltage_correction = 0; // дробное со смещённой вправо точкой 0.1в =1, 2.4в = 24 и т.д.
+    setpoints_data.voltage_correction = 127; // 
     setpoints_data.shutdown_delay = 30; //30 минут
     setpoints_data.lcd_brightness = 100;   
     setpoints_data.spare_byte_1 = 0;
