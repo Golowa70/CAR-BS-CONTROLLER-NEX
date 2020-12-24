@@ -26,6 +26,15 @@ pinMode(MAIN_SUPPLY_OUT, OUTPUT);
 pinMode(BUZZER , OUTPUT);
 pinMode(BUILTIN_LED, OUTPUT); 
 pinMode(WDT_RESET_OUT, OUTPUT); 
+
+digitalWrite(WATER_PUMP_OUTPUT_1, LOW);
+digitalWrite(LIGHT_OUTPUT_2, LOW);
+digitalWrite(CONVERTER_OUTPUT_3, LOW);
+digitalWrite(SENSORS_SUPPLY_5v, LOW);
+digitalWrite(MAIN_SUPPLY_OUT, LOW);
+digitalWrite(BUZZER, LOW);
+digitalWrite(BUILTIN_LED, LOW);
+digitalWrite(WDT_RESET_OUT, LOW);
 }
 
 
