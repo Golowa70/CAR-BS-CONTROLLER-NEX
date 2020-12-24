@@ -43,7 +43,8 @@ GTimer timerPjonTransmittPeriod;
 GTimer timerShutdownDelay;
 GTimer timerMenuDynamicUpdate;
 GTimer timerScreenOffDelay;
-
+GTimer timerInputsUpdate;     // таймер период обновления входов
+GTimer timerStartDelay;       // таймер задержки опроса входов после старта
 
 GFilterRA voltage_filter;
 
@@ -174,6 +175,9 @@ void setup() {
   timerScreenOffDelay.setMode(MANUAL);
   timerScreenOffDelay.setInterval(10000);
   timerMenuDynamicUpdate.setInterval(MENU_UPDATE_PERIOD);
+  timerInputsUpdate.setInterval(INPUTS_UPDATE_PERIOD);
+  timerStartDelay.setMode(MANUAL);
+  timerStartDelay.setInterval(START_DELAY);
  
   fnMenuStaticDataUpdate();
 
@@ -392,31 +396,31 @@ void fnMenuDynamicDataUpdate(void){
                   if(main_data.pump_output_state) myNex. writeNum (F("nxPumpState.val"), HIGH);
                   else myNex. writeNum (F("nxPumpState.val"), LOW);
 
-                  myNex. writeNum ("p1n0.val", main_data.water_level_liter);
-                  myNex. writeNum ("p1n1.val", main_data.water_level_percent);
+                  myNex. writeNum (F("p1n0.val"), main_data.water_level_liter);
+                  myNex. writeNum (F("p1n1.val"), main_data.water_level_percent);
                         
             break;    
 
             case IOSTATUS_PAGE:
-                              if(main_data.door_switch_state)myNex.writeNum("p2t0.pco", WHITE);
-                              else myNex.writeNum("p2t0.pco", GRAY);
-                              if(main_data.proximity_sensor_state)myNex.writeNum("p2t1.pco", WHITE);
-                              else myNex.writeNum("p2t1.pco", GRAY);
-                              if(main_data.ignition_switch_state)myNex.writeNum("p2t2.pco", WHITE);
-                              else myNex.writeNum("p2t2.pco", GRAY);
-                              if(main_data.low_washer_water_level)myNex.writeNum("p2t3.pco", WHITE);
-                              else myNex.writeNum("p2t3.pco", GRAY);
+                              if(main_data.door_switch_state)myNex.writeNum(F("p2t0.pco"), WHITE);
+                              else myNex.writeNum(F("p2t0.pco"), GRAY);
+                              if(main_data.proximity_sensor_state)myNex.writeNum(F("p2t1.pco"), WHITE);
+                              else myNex.writeNum(F("p2t1.pco"), GRAY);
+                              if(main_data.ignition_switch_state)myNex.writeNum(F("p2t2.pco"), WHITE);
+                              else myNex.writeNum(F("p2t2.pco"), GRAY);
+                              if(main_data.low_washer_water_level)myNex.writeNum(F("p2t3.pco"), WHITE);
+                              else myNex.writeNum(F("p2t3.pco"), GRAY);
 
 
-                              if(main_data.pump_output_state)myNex.writeNum("p2t4.pco", WHITE);
-                              else myNex.writeNum("p2t4.pco", GRAY);
-                              if(main_data.light_output_state)myNex.writeNum("p2t5.pco", WHITE);
-                              else myNex.writeNum("p2t5.pco", GRAY);
+                              if(main_data.pump_output_state)myNex.writeNum(F("p2t4.pco"), WHITE);
+                              else myNex.writeNum(F("p2t4.pco"), GRAY);
+                              if(main_data.light_output_state)myNex.writeNum(F("p2t5.pco"), WHITE);
+                              else myNex.writeNum(F("p2t5.pco"), GRAY);
                               // если выход конвертера писать третьим то не отображается на экране
-                              if(main_data.converter_output_state)myNex.writeNum("p2t6.pco", WHITE);
-                              else myNex.writeNum("p2t6.pco", GRAY);
-                              //if(main_data.)myNex.writeNum("p2t7.pco", WHITE);
-                              //else myNex.writeNum("p2t7.pco", GRAY);
+                              if(main_data.converter_output_state)myNex.writeNum(F("p2t6.pco"), WHITE);
+                              else myNex.writeNum(F("p2t6.pco"), GRAY);
+                              //if(main_data.)myNex.writeNum(F("p2t7.pco"), WHITE);
+                              //else myNex.writeNum(F("p2t7.pco"), GRAY);
 
             break;
 
@@ -426,51 +430,51 @@ void fnMenuDynamicDataUpdate(void){
 
             case  ONEWIRESET_PAGE:
                               //обновляем динамические параметры страницы
-                              myNex. writeNum("p4n0.val", setpoints_data.sensors_select_array[INSIDE_SENSOR-1]);
-                              myNex. writeNum("p4n1.val", setpoints_data.sensors_select_array[OUTSIDE_SENSOR-1]);
-                              myNex. writeNum("p4n2.val", setpoints_data.sensors_select_array[SPARE_SENSOR-1]);
+                              myNex. writeNum(F("p4n0.val"), setpoints_data.sensors_select_array[INSIDE_SENSOR-1]);
+                              myNex. writeNum(F("p4n1.val"), setpoints_data.sensors_select_array[OUTSIDE_SENSOR-1]);
+                              myNex. writeNum(F("p4n2.val"), setpoints_data.sensors_select_array[SPARE_SENSOR-1]);
 
                               //меняем цвет уставки если значение изменено но не сохранено в EEPROM
-                              if(old_setpoints_data.sensors_select_array[INSIDE_SENSOR-1] != setpoints_data.sensors_select_array[INSIDE_SENSOR-1])myNex.writeNum("p4n0.pco", YELLOW);
-                              else myNex.writeNum("p4n0.pco", WHITE);
-                              if(old_setpoints_data.sensors_select_array[OUTSIDE_SENSOR-1] != setpoints_data.sensors_select_array[OUTSIDE_SENSOR-1])myNex.writeNum("p4n1.pco", YELLOW);
-                              else myNex.writeNum("p4n1.pco", WHITE);
-                              if(old_setpoints_data.sensors_select_array[SPARE_SENSOR-1] != setpoints_data.sensors_select_array[SPARE_SENSOR-1])myNex.writeNum("p4n2.pco", YELLOW);
-                              else myNex.writeNum("p4n2.pco", WHITE);
+                              if(old_setpoints_data.sensors_select_array[INSIDE_SENSOR-1] != setpoints_data.sensors_select_array[INSIDE_SENSOR-1])myNex.writeNum(F("p4n0.pco"), YELLOW);
+                              else myNex.writeNum(F("p4n0.pco"), WHITE);
+                              if(old_setpoints_data.sensors_select_array[OUTSIDE_SENSOR-1] != setpoints_data.sensors_select_array[OUTSIDE_SENSOR-1])myNex.writeNum(F("p4n1.pco"), YELLOW);
+                              else myNex.writeNum(F("p4n1.pco"), WHITE);
+                              if(old_setpoints_data.sensors_select_array[SPARE_SENSOR-1] != setpoints_data.sensors_select_array[SPARE_SENSOR-1])myNex.writeNum(F("p4n2.pco"), YELLOW);
+                              else myNex.writeNum(F("p4n2.pco"), WHITE);
 
                                     switch (current_item)
                                     {
                                     case  1:
-                                          myNex.writeNum("p4t6.pco", BLUE);
-                                          myNex.writeNum("p4t7.pco", WHITE);
-                                          myNex.writeNum("p4t12.pco", WHITE);
+                                          myNex.writeNum(F("p4t6.pco"), BLUE);
+                                          myNex.writeNum(F("p4t7.pco"), WHITE);
+                                          myNex.writeNum(F("p4t12.pco"), WHITE);
                                           variable_value = &setpoints_data.sensors_select_array[INSIDE_SENSOR-1]; 
                                           var_min_value = 1;
                                           var_max_value = 3;                            
                                           break;
 
                                     case  2:
-                                          myNex.writeNum("p4t6.pco", WHITE);
-                                          myNex.writeNum("p4t7.pco", BLUE);
-                                          myNex.writeNum("p4t12.pco", WHITE);
+                                          myNex.writeNum(F("p4t6.pco"), WHITE);
+                                          myNex.writeNum(F("p4t7.pco"), BLUE);
+                                          myNex.writeNum(F("p4t12.pco"), WHITE);
                                           variable_value = &setpoints_data.sensors_select_array[OUTSIDE_SENSOR-1];
                                           var_min_value = 1;
                                           var_max_value = 3;
                                           break;
 
                                     case  3:
-                                          myNex.writeNum("p4t6.pco", WHITE);
-                                          myNex.writeNum("p4t7.pco", WHITE);
-                                          myNex.writeNum("p4t12.pco", BLUE);
+                                          myNex.writeNum(F("p4t6.pco"), WHITE);
+                                          myNex.writeNum(F("p4t7.pco"), WHITE);
+                                          myNex.writeNum(F("p4t12.pco"), BLUE);
                                           variable_value = &setpoints_data.sensors_select_array[SPARE_SENSOR-1];
                                           var_min_value = 1;
                                           var_max_value = 3;
                                           break;
 
                                     default:
-                                          myNex.writeNum("p4t6.pco", WHITE);
-                                          myNex.writeNum("p4t7.pco", WHITE);
-                                          myNex.writeNum("p4t12.pco", WHITE);
+                                          myNex.writeNum(F("p4t6.pco"), WHITE);
+                                          myNex.writeNum(F("p4t7.pco"), WHITE);
+                                          myNex.writeNum(F("p4t12.pco"), WHITE);
                                           variable_value = NULL;
                                           var_min_value = 0;
                                           var_max_value = 0;
@@ -481,9 +485,9 @@ void fnMenuDynamicDataUpdate(void){
 
             case  WATERSET_PAGE:
                                     //обновляем динамические параметры страницы
-                                    myNex. writeNum("p5n0.val", setpoints_data.pump_off_delay);
-                                    myNex. writeNum("p5n1.val", setpoints_data.flow_sensor_correction);
-                                    myNex. writeNum("p5n2.val", setpoints_data.water_tank_capacity);
+                                    myNex. writeNum(F("p5n0.val"), setpoints_data.pump_off_delay);
+                                    myNex. writeNum(F("p5n1.val"), setpoints_data.flow_sensor_correction);
+                                    myNex. writeNum(F("p5n2.val"), setpoints_data.water_tank_capacity);
                                     myNex. writeNum("p5n4.val", main_data.water_level_liter);
                                     myNex. writeNum("p5n3.val", timerPumpOffDelay.currentTime() * 0.001);
 
@@ -1525,7 +1529,7 @@ float fnVoltageRead(void){
             ModbusRTUServer.inputRegisterWrite(0x06, pj_fault_counter_2);
 
 
-            fnInputsUpdate();
+            if(timerInputsUpdate.isReady() && timerStartDelay.isReady()) fnInputsUpdate();
             fnPumpControl();
 
            if(myNex.currentPageId != ONEWIRESCANNER_PAGE)flag_ow_scanned = LOW;
@@ -1675,8 +1679,9 @@ float fnVoltageRead(void){
                   fnPjonSender();
             }
 
+            taskENTER_CRITICAL();
             pjon_RX_response = bus.receive(1000); // прием данных PJON и возврат результата приёма
-                  
+            taskEXIT_CRITICAL();      
             vTaskDelay(2); //  * 15 ms 
       }
  }
