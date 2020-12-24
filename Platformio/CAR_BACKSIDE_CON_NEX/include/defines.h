@@ -95,7 +95,6 @@
 #define DIVISION_RATIO_VOLTAGE_INPUT  0.0208    // разрешение 0.0025  уможить на коэфициент резистивного делителя 8.2
 
 /*
-
 //water level sensor
 #define WATER_LEVEL_LESS_THEN_25      1      
 #define WATER_LEVEL_25                2
@@ -106,8 +105,10 @@
 
 */
 
-#define SECOND       1000
-#define MINUTE       60000
-#define HOUR         3600000
+#define SECOND       1000           //ms
+#define MINUTE       60000          //ms
+#define HOUR         3600000        //ms
 
+#define INPUTS_UPDATE_PERIOD   500  //ms
+#define START_DELAY            3000 //ms
 #endif
