@@ -1570,11 +1570,11 @@ float fnVoltageRead(void){
  {
       while (1)
       {
-            //taskENTER_CRITICAL();
             if(timerPjonTransmittPeriod.isReady()){
                   fnPjonSender();
             }
-            
+
+            //taskENTER_CRITICAL();
             pjon_RX_response = bus.receive(1000); // прием данных PJON и возврат результата приёма
             //taskEXIT_CRITICAL();      
             vTaskDelay(1); //  * 15 ms 
