@@ -45,6 +45,7 @@ GTimer timerMenuDynamicUpdate;
 GTimer timerScreenOffDelay;
 GTimer timerInputsUpdate;     // таймер период обновления входов
 GTimer timerStartDelay;       // таймер задержки опроса входов после старта
+GTimer timerPrxSensorFeedbackDelay;
 
 GFilterRA voltage_filter;
 
@@ -178,6 +179,8 @@ void setup() {
   timerInputsUpdate.setInterval(INPUTS_UPDATE_PERIOD);
   timerStartDelay.setMode(MANUAL);
   timerStartDelay.setInterval(START_DELAY);
+  timerPrxSensorFeedbackDelay.setMode(MANUAL);
+  timerPrxSensorFeedbackDelay.setInterval(PRX_SENSOR_FEEDBACK_DELAY);
  
   fnMenuStaticDataUpdate();
 
@@ -1213,8 +1216,9 @@ void  trigger8 (){
 void fnPumpControl(void){
 
       if(main_data.door_switch_state){
-            if( (main_data.proximity_sensor_state == HIGH) && (proximity_sensor_old_state == LOW)){
+            if( (main_data.proximity_sensor_state == HIGH) && (proximity_sensor_old_state == LOW) && (timerPrxSensorFeedbackDelay.isReady()) ){
                   main_data.pump_output_state = 1 - main_data.pump_output_state;
+                  timerPrxSensorFeedbackDelay.setInterval(PRX_SENSOR_FEEDBACK_DELAY);
                   if ( !rtttl::isPlaying() ) rtttl :: begin (BUZZER, melody_1);
                   if(main_data.pump_output_state)timerPumpOffDelay.setInterval(setpoints_data.pump_off_delay * SECOND);
                   else timerPumpOffDelay.stop();
