@@ -11,9 +11,8 @@
 #include <DallasTemperature.h>
 #include "GyverHacks.h"
 #include <GyverFilters.h>
-//#include "GyverWDT.h" 
 #include <NonBlockingRtttl.h>  // библиотека пиликалки
-//#include <GyverTimers.h>
+#include <GyverTimers.h>
 #include <Arduino_FreeRTOS.h>
 
 #include <ArduinoRS485.h> 
@@ -84,7 +83,6 @@ void TaskTempSensorsUpdate( void *pvParameters );
 void TaskPjonTransmitter( void *pvParameters );
 void TaskVoltageMeasurement( void *pvParameters );
 void TaskModBusPool(void *pvParameters );
-void TaskWdtReset(void *pvParameters );
 void TaskOwScanner(void *pvParameters );
 
 //functions
@@ -103,13 +101,16 @@ bool fnSensorsPowerControl(void);
 bool fnMainPowerControl(void);
 
 //обработчик прерывания от Timer3
-//ISR(TIMER3_A) {
-    
-//}
+ISR(TIMER3_A) {
+      main_data.wdt_reset_output_state = 1 - main_data.wdt_reset_output_state;
+      digitalWrite(WDT_RESET_OUT, main_data.wdt_reset_output_state);
+}
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 void setup() {
+  Timer3.setPeriod(500000);     // Устанавливаем период таймера 500000 мкс -> 0.5 гц
+  Timer3.enableISR(CHANNEL_A);
 
   digitalWrite(MAIN_SUPPLY_OUT,HIGH);
   //меняем скорость Nextion 
@@ -239,7 +240,7 @@ void setup() {
     xTaskCreate(
     TaskPjonTransmitter
     ,  "PjonTransmitter"  // A name just for humans
-    ,  512  // This stack size can be checked & adjusted by reading the Stack Highwater
+    ,  512  // This stack size can be checked & adjusted by reading the Stack Highwater // 512
     ,  NULL
     ,  2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
     ,  NULL );
@@ -255,21 +256,12 @@ void setup() {
     xTaskCreate(
     TaskModBusPool
     ,  "ModBusPool"  // A name just for humans
-    ,  800  // This stack size can be checked & adjusted by reading the Stack Highwater
+    ,  1000  // This stack size can be checked & adjusted by reading the Stack Highwater
     ,  NULL
     ,  2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
     ,  NULL );
 
-
-    xTaskCreate(
-    TaskWdtReset
-    ,  "WdtReset"  // A name just for humans
-    ,  128  // This stack size can be checked & adjusted by reading the Stack Highwater
-    ,  NULL
-    ,  2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-    ,  NULL );
-
-    
+   
     xTaskCreate(
     TaskOwScanner
     ,  "OwScanner"  // A name just for humans
@@ -491,54 +483,54 @@ void fnMenuDynamicDataUpdate(void){
                                     myNex. writeNum(F("p5n0.val"), setpoints_data.pump_off_delay);
                                     myNex. writeNum(F("p5n1.val"), setpoints_data.flow_sensor_correction);
                                     myNex. writeNum(F("p5n2.val"), setpoints_data.water_tank_capacity);
-                                    myNex. writeNum("p5n4.val", main_data.water_level_liter);
-                                    myNex. writeNum("p5n3.val", timerPumpOffDelay.currentTime() * 0.001);
+                                    myNex. writeNum(F("p5n4.val"), main_data.water_level_liter);
+                                    myNex. writeNum(F("p5n3.val"), timerPumpOffDelay.currentTime() * 0.001);
 
                                     //меняем цвет уставки если значение изменено но не сохранено в EEPROM
-                                    if(old_setpoints_data.pump_off_delay != setpoints_data.pump_off_delay)myNex.writeNum("p5n0.pco", YELLOW);
-                                    else myNex.writeNum("p5n0.pco", WHITE);
-                                    if(old_setpoints_data.flow_sensor_correction != setpoints_data.flow_sensor_correction)myNex.writeNum("p5n1.pco", YELLOW);
-                                    else myNex.writeNum("p5n1.pco", WHITE);
-                                    if(old_setpoints_data.water_tank_capacity != setpoints_data.water_tank_capacity)myNex.writeNum("p5n2.pco", YELLOW);
-                                    else myNex.writeNum("p5n2.pco", WHITE);
+                                    if(old_setpoints_data.pump_off_delay != setpoints_data.pump_off_delay)myNex.writeNum(F("p5n0.pco"), YELLOW);
+                                    else myNex.writeNum(F("p5n0.pco"), WHITE);
+                                    if(old_setpoints_data.flow_sensor_correction != setpoints_data.flow_sensor_correction)myNex.writeNum(F("p5n1.pco"), YELLOW);
+                                    else myNex.writeNum(F("p5n1.pco"), WHITE);
+                                    if(old_setpoints_data.water_tank_capacity != setpoints_data.water_tank_capacity)myNex.writeNum(F("p5n2.pco"), YELLOW);
+                                    else myNex.writeNum(F("p5n2.pco"), WHITE);
 
                                     //обновляем пункт управления насосом
-                                    if(main_data.pump_output_state)myNex.writeNum("p5t4.pco", GREEN);
-                                    else myNex.writeNum("p5t4.pco", WHITE);
+                                    if(main_data.pump_output_state)myNex.writeNum(F("p5t4.pco"), GREEN);
+                                    else myNex.writeNum(F("p5t4.pco"), WHITE);
 
                                     switch (current_item)
                                     {
                                     case  1:
-                                          myNex.writeNum("p5t1.pco", BLUE);
-                                          myNex.writeNum("p5t2.pco", WHITE);
-                                          myNex.writeNum("p5t3.pco", WHITE);
+                                          myNex.writeNum(F("p5t1.pco"), BLUE);
+                                          myNex.writeNum(F("p5t2.pco"), WHITE);
+                                          myNex.writeNum(F("p5t3.pco"), WHITE);
                                           variable_value = &setpoints_data.pump_off_delay;
                                           var_min_value = 1;
                                           var_max_value = 60; // 60 секунд
                                           break;
 
                                     case  2:
-                                          myNex.writeNum("p5t1.pco", WHITE);
-                                          myNex.writeNum("p5t2.pco", BLUE);
-                                          myNex.writeNum("p5t3.pco", WHITE);
+                                          myNex.writeNum(F("p5t1.pco"), WHITE);
+                                          myNex.writeNum(F("p5t2.pco"), BLUE);
+                                          myNex.writeNum(F("p5t3.pco"), WHITE);
                                           variable_value = &setpoints_data.flow_sensor_correction;
                                           var_min_value = 1;
                                           var_max_value = 255;
                                           break;
 
                                     case  3:
-                                          myNex.writeNum("p5t1.pco", WHITE);
-                                          myNex.writeNum("p5t2.pco", WHITE);
-                                          myNex.writeNum("p5t3.pco", BLUE);
+                                          myNex.writeNum(F("p5t1.pco"), WHITE);
+                                          myNex.writeNum(F("p5t2.pco"), WHITE);
+                                          myNex.writeNum(F("p5t3.pco"), BLUE);
                                           variable_value = &setpoints_data.water_tank_capacity;
                                           var_min_value = 1;
                                           var_max_value = 100; // 100 литров
                                           break;
 
                                     default:
-                                          myNex.writeNum("p5t1.pco", WHITE);
-                                          myNex.writeNum("p5t2.pco", WHITE);
-                                          myNex.writeNum("p5t3.pco", WHITE);
+                                          myNex.writeNum(F("p5t1.pco"), WHITE);
+                                          myNex.writeNum(F("p5t2.pco"), WHITE);
+                                          myNex.writeNum(F("p5t3.pco"), WHITE);
                                           variable_value = NULL;
                                           var_min_value = 0;
                                           var_max_value = 0;
@@ -549,10 +541,10 @@ void fnMenuDynamicDataUpdate(void){
 
             case  CONVSET_PAGE:
                                     //обновляем динамические параметры страницы
-                                    myNex. writeNum("p6n0.val", setpoints_data.converter_off_delay);
-                                    myNex. writeNum("p6n1.val", setpoints_data.converter_shutdown_delay);
-                                    myNex. writeNum("p6n2.val", setpoints_data.converter_voltage_off);
-                                    myNex. writeNum("p6n3.val", setpoints_data.converter_voltage_on);
+                                    myNex. writeNum(F("p6n0.val"), setpoints_data.converter_off_delay);
+                                    myNex. writeNum(F("p6n1.val"), setpoints_data.converter_shutdown_delay);
+                                    myNex. writeNum(F("p6n2.val"), setpoints_data.converter_voltage_off);
+                                    myNex. writeNum(F("p6n3.val"), setpoints_data.converter_voltage_on);
 
                                     switch (setpoints_data.convertet_out_mode)
                                     {
@@ -574,79 +566,79 @@ void fnMenuDynamicDataUpdate(void){
 
                                     //меняем цвет уставки если значение изменено но не сохранено в EEPROM
                                     if(old_setpoints_data.converter_off_delay != setpoints_data.converter_off_delay)myNex.writeNum("p6n0.pco", YELLOW);
-                                    else myNex.writeNum("p6n0.pco", WHITE);
-                                    if(old_setpoints_data.converter_shutdown_delay != setpoints_data.converter_shutdown_delay)myNex.writeNum("p6n1.pco", YELLOW);
-                                    else myNex.writeNum("p6n1.pco", WHITE);
-                                    if(old_setpoints_data.converter_voltage_off != setpoints_data.converter_voltage_off)myNex.writeNum("p6n2.pco", YELLOW);
-                                    else myNex.writeNum("p6n2.pco", WHITE);
-                                    if(old_setpoints_data.converter_voltage_on != setpoints_data.converter_voltage_on)myNex.writeNum("p6n3.pco", YELLOW);
-                                    else myNex.writeNum("p6n3.pco", WHITE);
-                                    if(old_setpoints_data.convertet_out_mode != setpoints_data.convertet_out_mode)myNex.writeNum("p6t6.pco", YELLOW);
-                                    else myNex.writeNum("p6t6.pco", WHITE);                
+                                    else myNex.writeNum(F("p6n0.pco"), WHITE);
+                                    if(old_setpoints_data.converter_shutdown_delay != setpoints_data.converter_shutdown_delay)myNex.writeNum(F("p6n1.pco"), YELLOW);
+                                    else myNex.writeNum(F("p6n1.pco"), WHITE);
+                                    if(old_setpoints_data.converter_voltage_off != setpoints_data.converter_voltage_off)myNex.writeNum(F("p6n2.pco"), YELLOW);
+                                    else myNex.writeNum(F("p6n2.pco"), WHITE);
+                                    if(old_setpoints_data.converter_voltage_on != setpoints_data.converter_voltage_on)myNex.writeNum(F("p6n3.pco"), YELLOW);
+                                    else myNex.writeNum(F("p6n3.pco"), WHITE);
+                                    if(old_setpoints_data.convertet_out_mode != setpoints_data.convertet_out_mode)myNex.writeNum(F("p6t6.pco"), YELLOW);
+                                    else myNex.writeNum(F("p6t6.pco"), WHITE);                
                                     
                                     switch (current_item)
                                     {
                                           case 1:
-                                                myNex.writeNum("p6t1.pco", BLUE);
-                                                myNex.writeNum("p6t2.pco", WHITE);
-                                                myNex.writeNum("p6t3.pco", WHITE);
-                                                myNex.writeNum("p6t4.pco", WHITE);
-                                                myNex.writeNum("p6t5.pco", WHITE);
+                                                myNex.writeNum(F("p6t1.pco"), BLUE);
+                                                myNex.writeNum(F("p6t2.pco"), WHITE);
+                                                myNex.writeNum(F("p6t3.pco"), WHITE);
+                                                myNex.writeNum(F("p6t4.pco"), WHITE);
+                                                myNex.writeNum(F("p6t5.pco"), WHITE);
                                                 variable_value = &setpoints_data.converter_off_delay;
                                                 var_min_value = 0;
                                                 var_max_value = 32; //min
                                                 break;
 
                                           case 2:
-                                                myNex.writeNum("p6t1.pco", WHITE);
-                                                myNex.writeNum("p6t2.pco", BLUE);
-                                                myNex.writeNum("p6t3.pco", WHITE);
-                                                myNex.writeNum("p6t4.pco", WHITE);
-                                                myNex.writeNum("p6t5.pco", WHITE);
+                                                myNex.writeNum(F("p6t1.pco"), WHITE);
+                                                myNex.writeNum(F("p6t2.pco"), BLUE);
+                                                myNex.writeNum(F("p6t3.pco"), WHITE);
+                                                myNex.writeNum(F("p6t4.pco"), WHITE);
+                                                myNex.writeNum(F("p6t5.pco"), WHITE);
                                                 variable_value = &setpoints_data.converter_shutdown_delay;
                                                 var_min_value = 1;
                                                 var_max_value = 180; // min
                                                 break;                                               
 
                                           case 3:
-                                                myNex.writeNum("p6t1.pco", WHITE);
-                                                myNex.writeNum("p6t2.pco", WHITE);
-                                                myNex.writeNum("p6t3.pco", BLUE);
-                                                myNex.writeNum("p6t4.pco", WHITE);
-                                                myNex.writeNum("p6t5.pco", WHITE);
+                                                myNex.writeNum(F("p6t1.pco"), WHITE);
+                                                myNex.writeNum(F("p6t2.pco"), WHITE);
+                                                myNex.writeNum(F("p6t3.pco"), BLUE);
+                                                myNex.writeNum(F("p6t4.pco"), WHITE);
+                                                myNex.writeNum(F("p6t5.pco"), WHITE);
                                                 variable_value = &setpoints_data.converter_voltage_off;
                                                 var_min_value = 40;
                                                 var_max_value = 150; 
                                                 break;
 
                                           case 4:
-                                                myNex.writeNum("p6t1.pco", WHITE);
-                                                myNex.writeNum("p6t2.pco", WHITE);
-                                                myNex.writeNum("p6t3.pco", WHITE);
-                                                myNex.writeNum("p6t4.pco", BLUE);
-                                                myNex.writeNum("p6t5.pco", WHITE);
+                                                myNex.writeNum(F("p6t1.pco"), WHITE);
+                                                myNex.writeNum(F("p6t2.pco"), WHITE);
+                                                myNex.writeNum(F("p6t3.pco"), WHITE);
+                                                myNex.writeNum(F("p6t4.pco"), BLUE);
+                                                myNex.writeNum(F("p6t5.pco"), WHITE);
                                                 variable_value = &setpoints_data.converter_voltage_on;
                                                 var_min_value = 40;
                                                 var_max_value = 150; 
                                                 break; 
 
                                           case 5:
-                                                myNex.writeNum("p6t1.pco", WHITE);
-                                                myNex.writeNum("p6t2.pco", WHITE);
-                                                myNex.writeNum("p6t3.pco", WHITE);
-                                                myNex.writeNum("p6t4.pco", WHITE);
-                                                myNex.writeNum("p6t5.pco", BLUE);
+                                                myNex.writeNum(F("p6t1.pco"), WHITE);
+                                                myNex.writeNum(F("p6t2.pco"), WHITE);
+                                                myNex.writeNum(F("p6t3.pco"), WHITE);
+                                                myNex.writeNum(F("p6t4.pco"), WHITE);
+                                                myNex.writeNum(F("p6t5.pco"), BLUE);
                                                 variable_value = &setpoints_data.convertet_out_mode;
                                                 var_min_value = 0;
                                                 var_max_value = 2; 
                                                 break;           
 
                                           default:
-                                                myNex.writeNum("p6t1.pco", WHITE);
-                                                myNex.writeNum("p6t2.pco", WHITE);
-                                                myNex.writeNum("p6t3.pco", WHITE);
-                                                myNex.writeNum("p6t4.pco", WHITE);
-                                                myNex.writeNum("p6t5.pco", WHITE);
+                                                myNex.writeNum(F("p6t1.pco"), WHITE);
+                                                myNex.writeNum(F("p6t2.pco"), WHITE);
+                                                myNex.writeNum(F("p6t3.pco"), WHITE);
+                                                myNex.writeNum(F("p6t4.pco"), WHITE);
+                                                myNex.writeNum(F("p6t5.pco"), WHITE);
                                                 variable_value = NULL;
                                                 var_min_value = 0;
                                                 var_max_value = 0;
@@ -658,20 +650,20 @@ void fnMenuDynamicDataUpdate(void){
 
             case LIGHTSET_PAGE:
                               //обновляем динамические параметры страницы
-                              myNex. writeNum("p7n0.val", setpoints_data.light_off_delay);
+                              myNex. writeNum(F("p7n0.val"), setpoints_data.light_off_delay);
 
                               switch (setpoints_data.light_out_mode)
                               {
                                     case OFF_MODE:
-                                                myNex. writeStr("p7t3.txt", "OFF");
+                                                myNex. writeStr(F("p7t3.txt"), F("OFF") );
                                                 break;
 
                                     case ON_MODE:
-                                                myNex. writeStr("p7t3.txt", "ON");
+                                                myNex. writeStr(F("p7t3.txt"), F("ON") );
                                                 break;
 
                                     case AUTO_MODE:
-                                                myNex. writeStr("p7t3.txt", "AUTO");
+                                                myNex. writeStr(F("p7t3.txt"), F("AUTO") );
                                                 break;            
                                     
                                     default:
@@ -679,32 +671,32 @@ void fnMenuDynamicDataUpdate(void){
                               }
 
                               //меняем цвет уставки если значение изменено но не сохранено в EEPROM
-                              if(old_setpoints_data.light_off_delay != setpoints_data.light_off_delay)myNex.writeNum("p7n0.pco", YELLOW);
-                              else myNex.writeNum("p7n0.pco", WHITE);
-                              if(old_setpoints_data.light_out_mode != setpoints_data.light_out_mode)myNex.writeNum("p7t3.pco", YELLOW);
-                              else myNex.writeNum("p7t3.pco", WHITE); 
+                              if(old_setpoints_data.light_off_delay != setpoints_data.light_off_delay)myNex.writeNum(F("p7n0.pco"), YELLOW);
+                              else myNex.writeNum(F("p7n0.pco"), WHITE);
+                              if(old_setpoints_data.light_out_mode != setpoints_data.light_out_mode)myNex.writeNum(F("p7t3.pco"), YELLOW);
+                              else myNex.writeNum(F("p7t3.pco"), WHITE); 
 
                               switch (current_item)
                               {
                                     case 1:
-                                          myNex.writeNum("p7t1.pco", BLUE);
-                                          myNex.writeNum("p7t2.pco", WHITE);
+                                          myNex.writeNum(F("p7t1.pco"), BLUE);
+                                          myNex.writeNum(F("p7t2.pco"), WHITE);
                                           variable_value = &setpoints_data.light_off_delay;
                                           var_min_value = 0;
                                           var_max_value = 60; 
                                           break;
 
                                     case 2:
-                                          myNex.writeNum("p7t1.pco", WHITE);
-                                          myNex.writeNum("p7t2.pco", BLUE);
+                                          myNex.writeNum(F("p7t1.pco"), WHITE);
+                                          myNex.writeNum(F("p7t2.pco"), BLUE);
                                           variable_value = &setpoints_data.light_out_mode;
                                           var_min_value = 0;
                                           var_max_value = 2; 
                                           break;
 
                                     default:
-                                          myNex.writeNum("p7t1.pco", WHITE);
-                                          myNex.writeNum("p7t2.pco", WHITE);
+                                          myNex.writeNum(F("p7t1.pco"), WHITE);
+                                          myNex.writeNum(F("p7t2.pco"), WHITE);
                                           variable_value = NULL;
                                           var_min_value = 0;
                                           var_max_value = 0;
@@ -715,10 +707,10 @@ void fnMenuDynamicDataUpdate(void){
 
             case PJONSET_PAGE:
                               //обновляем динамические параметры страницы
-                              myNex. writeNum("p8n0.val", setpoints_data.pjon_ID);
-                              myNex. writeNum("p8n1.val", main_data.water_level_liter);
-                              myNex. writeNum("p8n3.val", setpoints_data.pjon_float_fault_timer);
-                              myNex. writeNum("p8n4.val", setpoints_data.pjon_transmitt_period);
+                              myNex. writeNum(F("p8n0.val"), setpoints_data.pjon_ID);
+                              myNex. writeNum(F("p8n1.val"), main_data.water_level_liter);
+                              myNex. writeNum(F("p8n3.val"), setpoints_data.pjon_float_fault_timer);
+                              myNex. writeNum(F("p8n4.val"), setpoints_data.pjon_transmitt_period);
 
 
                         switch (pjon_sender_cnt)
@@ -728,23 +720,23 @@ void fnMenuDynamicDataUpdate(void){
                                     switch (pjon_TX__float_sensor_response)
                                     {
                                     case  PJON_ACK:
-                                                myNex.writeStr("p8t11.txt", "ACK");
+                                                myNex.writeStr(F("p8t11.txt"), F("ACK") );
                                                 break;
                                     
                                     case  PJON_NAK:
-                                                myNex.writeStr("p8t11.txt", "NAK");
+                                                myNex.writeStr(F("p8t11.txt"), F("NAK") );
                                                 break;
                                     
                                     case  PJON_BUSY:
-                                                myNex.writeStr("p8t11.txt", "BUSY");
+                                                myNex.writeStr(F("p8t11.txt"), F("BUSY") );
                                                 break;
 
                                     case  PJON_FAIL:
-                                                myNex.writeStr("p8t11.txt", "FAIL");
+                                                myNex.writeStr(F("p8t11.txt"), F("FAIL") );
                                                 break;
 
                                     default:
-                                                myNex.writeStr("p8t11.txt", "NAN");
+                                                myNex.writeStr(F("p8t11.txt"), F("NAN") );
                                                 break;
                                     }
                               
@@ -801,46 +793,46 @@ void fnMenuDynamicDataUpdate(void){
 
 
                               //меняем цвет уставки если значение изменено но не сохранено в EEPROM
-                              if(old_setpoints_data.pjon_ID != setpoints_data.pjon_ID)myNex.writeNum("p8n0.pco", YELLOW);
-                              else myNex.writeNum("p8n0.pco", WHITE);
-                              if(old_setpoints_data.pjon_float_fault_timer != setpoints_data.pjon_float_fault_timer)myNex.writeNum("p8n3.pco", YELLOW);
-                              else myNex.writeNum("p8n3.pco", WHITE);
-                              if(old_setpoints_data.pjon_transmitt_period != setpoints_data.pjon_transmitt_period)myNex.writeNum("p8n4.pco", YELLOW);
-                              else myNex.writeNum("p8n4.pco", WHITE);
+                              if(old_setpoints_data.pjon_ID != setpoints_data.pjon_ID)myNex.writeNum(F("p8n0.pco"), YELLOW);
+                              else myNex.writeNum(F("p8n0.pco"), WHITE);
+                              if(old_setpoints_data.pjon_float_fault_timer != setpoints_data.pjon_float_fault_timer)myNex.writeNum(F("p8n3.pco"), YELLOW);
+                              else myNex.writeNum(F("p8n3.pco"), WHITE);
+                              if(old_setpoints_data.pjon_transmitt_period != setpoints_data.pjon_transmitt_period)myNex.writeNum(F("p8n4.pco"), YELLOW);
+                              else myNex.writeNum(F("p8n4.pco"), WHITE);
                               
                               switch (current_item)
                               {
                                     case 1:
-                                          myNex.writeNum("p8t1.pco", BLUE);
-                                          myNex.writeNum("p8t4.pco", WHITE);
-                                          myNex.writeNum("p8t5.pco", WHITE);
+                                          myNex.writeNum(F("p8t1.pco"), BLUE);
+                                          myNex.writeNum(F("p8t4.pco"), WHITE);
+                                          myNex.writeNum(F("p8t5.pco"), WHITE);
                                           variable_value = &setpoints_data.pjon_ID;
                                           var_min_value = 1;
                                           var_max_value = 254; 
                                           break;
 
                                     case 2:
-                                          myNex.writeNum("p8t1.pco", WHITE);
-                                          myNex.writeNum("p8t4.pco", BLUE);
-                                          myNex.writeNum("p8t5.pco", WHITE);
+                                          myNex.writeNum(F("p8t1.pco"), WHITE);
+                                          myNex.writeNum(F("p8t4.pco"), BLUE);
+                                          myNex.writeNum(F("p8t5.pco"), WHITE);
                                           variable_value = &setpoints_data.pjon_float_fault_timer;
                                           var_min_value = 0;
                                           var_max_value = 255; 
                                           break;
 
                                     case 3:
-                                          myNex.writeNum("p8t1.pco", WHITE);
-                                          myNex.writeNum("p8t4.pco", WHITE);
-                                          myNex.writeNum("p8t5.pco", BLUE);
+                                          myNex.writeNum(F("p8t1.pco"), WHITE);
+                                          myNex.writeNum(F("p8t4.pco"), WHITE);
+                                          myNex.writeNum(F("p8t5.pco"), BLUE);
                                           variable_value = &setpoints_data.pjon_transmitt_period;
                                           var_min_value = 0;
                                           var_max_value = 255; 
                                           break;
 
                                     default:
-                                          myNex.writeNum("p8t1.pco", WHITE);
-                                          myNex.writeNum("p8t4.pco", WHITE);
-                                          myNex.writeNum("p8t5.pco", WHITE);
+                                          myNex.writeNum(F("p8t1.pco"), WHITE);
+                                          myNex.writeNum(F("p8t4.pco"), WHITE);
+                                          myNex.writeNum(F("p8t5.pco"), WHITE);
                                           variable_value = NULL;
                                           var_min_value = 0;
                                           var_max_value = 0;
@@ -851,15 +843,15 @@ void fnMenuDynamicDataUpdate(void){
 
             case ONEWIRESCANNER_PAGE:
                                     
-                                    myNex.writeNum ("p9x0.val", main_data.inside_temperature * 10);
-                                    myNex.writeNum ("p9x1.val", main_data.outside_temperature * 10);
-                                    myNex.writeNum ("p9x2.val", main_data.spare_temperature * 10);
+                                    myNex.writeNum (F("p9x0.val"), main_data.inside_temperature * 10);
+                                    myNex.writeNum (F("p9x1.val"), main_data.outside_temperature * 10);
+                                    myNex.writeNum (F("p9x2.val"), main_data.spare_temperature * 10);
 
             break;  
 
             case MODBUSSET_PAGE:
                               //обновляем динамические параметры страницы
-                              myNex. writeNum("p10n0.val", setpoints_data.mb_slave_ID);
+                              myNex. writeNum(F("p10n0.val"), setpoints_data.mb_slave_ID);
 
                               switch (setpoints_data.mb_baud_rate)
                               {
@@ -893,32 +885,32 @@ void fnMenuDynamicDataUpdate(void){
                               }
 
                               //меняем цвет уставки если значение изменено но не сохранено в EEPROM
-                              if(old_setpoints_data.mb_slave_ID != setpoints_data.mb_slave_ID)myNex.writeNum("p10n0.pco", YELLOW);
-                              else myNex.writeNum("p10n0.pco", WHITE);
-                              if(old_setpoints_data.mb_baud_rate != setpoints_data.mb_baud_rate)myNex.writeNum("p10t3.pco", YELLOW);
-                              else myNex.writeNum("p10t3.pco", WHITE); 
+                              if(old_setpoints_data.mb_slave_ID != setpoints_data.mb_slave_ID)myNex.writeNum(F("p10n0.pco"), YELLOW);
+                              else myNex.writeNum(F("p10n0.pco"), WHITE);
+                              if(old_setpoints_data.mb_baud_rate != setpoints_data.mb_baud_rate)myNex.writeNum(F("p10t3.pco"), YELLOW);
+                              else myNex.writeNum(F("p10t3.pco"), WHITE); 
 
                               switch (current_item)
                               {
                                     case 1:
-                                          myNex.writeNum("p10t1.pco", BLUE);
-                                          myNex.writeNum("p10t2.pco", WHITE);
+                                          myNex.writeNum(F("p10t1.pco"), BLUE);
+                                          myNex.writeNum(F("p10t2.pco"), WHITE);
                                           variable_value = &setpoints_data.mb_slave_ID;
                                           var_min_value = 1;
                                           var_max_value = 254; 
                                     break;
 
                                     case 2:
-                                          myNex.writeNum("p10t1.pco", WHITE);
-                                          myNex.writeNum("p10t2.pco", BLUE);
+                                          myNex.writeNum(F("p10t1.pco"), WHITE);
+                                          myNex.writeNum(F("p10t2.pco"), BLUE);
                                           variable_value = &setpoints_data.mb_baud_rate;
                                           var_min_value = 0;
                                           var_max_value = 5; 
                                     break;
 
                                     default:
-                                          myNex.writeNum("p10t1.pco", WHITE);
-                                          myNex.writeNum("p10t2.pco", WHITE);
+                                          myNex.writeNum(F("p10t1.pco"), WHITE);
+                                          myNex.writeNum(F("p10t2.pco"), WHITE);
                                           variable_value = NULL;
                                           var_min_value = 0;
                                           var_max_value = 0;
@@ -951,16 +943,16 @@ void fnMenuDynamicDataUpdate(void){
                               
 
                               //меняем цвет уставки если значение изменено но не сохранено в EEPROM
-                              if(old_setpoints_data.buzzer_out_mode != setpoints_data.buzzer_out_mode)myNex.writeNum("p11t6.pco", YELLOW);
-                              else myNex.writeNum("p11t6.pco", WHITE);
-                              if(old_setpoints_data.shutdown_delay != setpoints_data.shutdown_delay)myNex.writeNum("p11n0.pco", YELLOW);
-                              else myNex.writeNum("p11n0.pco", WHITE);
-                              if(old_setpoints_data.scrreen_off_delay != setpoints_data.scrreen_off_delay)myNex.writeNum("p11n1.pco", YELLOW);
-                              else myNex.writeNum("p11n1.pco", WHITE);
-                              if(old_setpoints_data.voltage_correction != setpoints_data.voltage_correction)myNex.writeNum("p11n2.pco", YELLOW);
-                              else myNex.writeNum("p11n2.pco", WHITE);
-                              if(old_setpoints_data.lcd_brightness != setpoints_data.lcd_brightness)myNex.writeNum("p11n3.pco", YELLOW);
-                              else myNex.writeNum("p11n3.pco", WHITE);
+                              if(old_setpoints_data.buzzer_out_mode != setpoints_data.buzzer_out_mode)myNex.writeNum(F("p11t6.pco"), YELLOW);
+                              else myNex.writeNum(F("p11t6.pco"), WHITE);
+                              if(old_setpoints_data.shutdown_delay != setpoints_data.shutdown_delay)myNex.writeNum(F("p11n0.pco"), YELLOW);
+                              else myNex.writeNum(F("p11n0.pco"), WHITE);
+                              if(old_setpoints_data.scrreen_off_delay != setpoints_data.scrreen_off_delay)myNex.writeNum(F("p11n1.pco"), YELLOW);
+                              else myNex.writeNum(F("p11n1.pco"), WHITE);
+                              if(old_setpoints_data.voltage_correction != setpoints_data.voltage_correction)myNex.writeNum(F("p11n2.pco"), YELLOW);
+                              else myNex.writeNum(F("p11n2.pco"), WHITE);
+                              if(old_setpoints_data.lcd_brightness != setpoints_data.lcd_brightness)myNex.writeNum(F("p11n3.pco"), YELLOW);
+                              else myNex.writeNum(F("p11n3.pco"), WHITE);
                               
                               switch (current_item)
                               {
@@ -977,55 +969,55 @@ void fnMenuDynamicDataUpdate(void){
 
                                     // ПОКА НЕ ИСПОЛЬЗУЕТСЯ
                                     case 2:
-                                          myNex.writeNum("p11t1.pco", WHITE);
-                                          myNex.writeNum("p11t2.pco", BLUE);
-                                          myNex.writeNum("p11t3.pco", WHITE);
-                                          myNex.writeNum("p11t4.pco", WHITE);
-                                          myNex.writeNum("p11t5.pco", WHITE);
+                                          myNex.writeNum(F("p11t1.pco"), WHITE);
+                                          myNex.writeNum(F("p11t2.pco"), BLUE);
+                                          myNex.writeNum(F("p11t3.pco"), WHITE);
+                                          myNex.writeNum(F("p11t4.pco"), WHITE);
+                                          myNex.writeNum(F("p11t5.pco"), WHITE);
                                           variable_value = &setpoints_data.shutdown_delay;
                                           var_min_value = 1;
                                           var_max_value = 24; // hours
                                     break;
 
                                     case 3:
-                                          myNex.writeNum("p11t1.pco", WHITE);
-                                          myNex.writeNum("p11t2.pco", WHITE);
-                                          myNex.writeNum("p11t3.pco", BLUE);
-                                          myNex.writeNum("p11t4.pco", WHITE);
-                                          myNex.writeNum("p11t5.pco", WHITE);
+                                          myNex.writeNum(F("p11t1.pco"), WHITE);
+                                          myNex.writeNum(F("p11t2.pco"), WHITE);
+                                          myNex.writeNum(F("p11t3.pco"), BLUE);
+                                          myNex.writeNum(F("p11t4.pco"), WHITE);
+                                          myNex.writeNum(F("p11t5.pco"), WHITE);
                                           variable_value = &setpoints_data.scrreen_off_delay;
                                           var_min_value = 1;
                                           var_max_value = 180; // min
                                     break;
 
                                     case 4:
-                                          myNex.writeNum("p11t1.pco", WHITE);
-                                          myNex.writeNum("p11t2.pco", WHITE);
-                                          myNex.writeNum("p11t3.pco", WHITE);
-                                          myNex.writeNum("p11t4.pco", BLUE);
-                                          myNex.writeNum("p11t5.pco", WHITE);
+                                          myNex.writeNum(F("p11t1.pco"), WHITE);
+                                          myNex.writeNum(F("p11t2.pco"), WHITE);
+                                          myNex.writeNum(F("p11t3.pco"), WHITE);
+                                          myNex.writeNum(F("p11t4.pco"), BLUE);
+                                          myNex.writeNum(F("p11t5.pco"), WHITE);
                                           variable_value = &setpoints_data.voltage_correction;
                                           var_min_value = 0;
                                           var_max_value = 255; 
                                     break;
 
                                     case 5:
-                                          myNex.writeNum("p11t1.pco", WHITE);
-                                          myNex.writeNum("p11t2.pco", WHITE);
-                                          myNex.writeNum("p11t3.pco", WHITE);
-                                          myNex.writeNum("p11t4.pco", WHITE);
-                                          myNex.writeNum("p11t5.pco", BLUE);
+                                          myNex.writeNum(F("p11t1.pco"), WHITE);
+                                          myNex.writeNum(F("p11t2.pco"), WHITE);
+                                          myNex.writeNum(F("p11t3.pco"), WHITE);
+                                          myNex.writeNum(F("p11t4.pco"), WHITE);
+                                          myNex.writeNum(F("p11t5.pco"), BLUE);
                                           variable_value = &setpoints_data.lcd_brightness;
                                           var_min_value = 10;
                                           var_max_value = 100; 
                                     break;
 
                                     default:
-                                          myNex.writeNum("p11t1.pco", WHITE);
-                                          myNex.writeNum("p11t2.pco", WHITE);
-                                          myNex.writeNum("p11t3.pco", WHITE);
-                                          myNex.writeNum("p11t4.pco", WHITE);
-                                          myNex.writeNum("p11t5.pco", WHITE);
+                                          myNex.writeNum(F("p11t1.pco"), WHITE);
+                                          myNex.writeNum(F("p11t2.pco"), WHITE);
+                                          myNex.writeNum(F("p11t3.pco"), WHITE);
+                                          myNex.writeNum(F("p11t4.pco"), WHITE);
+                                          myNex.writeNum(F("p11t5.pco"), WHITE);
                                           variable_value = NULL;
                                           var_min_value = 0;
                                           var_max_value = 0;
@@ -1532,7 +1524,7 @@ float fnVoltageRead(void){
 
             fnOutputsUpdate();
 
-            vTaskDelay(1);  // ms
+            vTaskDelay(1);  // * 15 ms
       }
 
  }
@@ -1568,7 +1560,7 @@ float fnVoltageRead(void){
                   main_data.spare_temperature = temp_sensors.getTempC(thermometerID_3);
             }   
 
-            vTaskDelay(35); // 30 ms * 35 = 1050ms
+            vTaskDelay(35); // * 15 ms 
       }
  }
  //***************************************************************
@@ -1578,14 +1570,14 @@ float fnVoltageRead(void){
  {
       while (1)
       {
+            //taskENTER_CRITICAL();
             if(timerPjonTransmittPeriod.isReady()){
                   fnPjonSender();
             }
-
-           // taskENTER_CRITICAL();
+            
             pjon_RX_response = bus.receive(1000); // прием данных PJON и возврат результата приёма
             //taskEXIT_CRITICAL();      
-            vTaskDelay(2); //  * 15 ms 
+            vTaskDelay(1); //  * 15 ms 
       }
  }
 //********************************************************************
@@ -1597,7 +1589,7 @@ void TaskVoltageMeasurement( void *pvParameters __attribute__((unused)) )  // Th
       {
            main_data.battery_voltage =  fnVoltageRead();
             
-            vTaskDelay(5); // 30*5 ms 
+            vTaskDelay(5); // *15 ms 
       }
  }
 //********************************************************************
@@ -1614,21 +1606,12 @@ void TaskModBusPool( void *pvParameters __attribute__((unused)) )  // This is a 
  {
       while (1)
       {
+            taskENTER_CRITICAL();
             vTaskSuspend(TaskMenuUpdate_Handler);
             ModbusRTUServer.poll();
             vTaskResume(TaskMenuUpdate_Handler);
-            vTaskDelay(60); // 20*15 ms      с задержкой меньше 150ms не работает, меньше 300ms не стабильно 
-      }
- }
-//********************************************************************
-
-void TaskWdtReset( void *pvParameters __attribute__((unused)) )  // This is a Task.
- {
-      while (1)
-      {
-            main_data.wdt_reset_output_state = 1 - main_data.wdt_reset_output_state;
-            digitalWrite(WDT_RESET_OUT, main_data.wdt_reset_output_state);
-            vTaskDelay(30); // 30 *15 ms 
+            taskEXIT_CRITICAL();
+            vTaskDelay(10); // *15 ms
       }
  }
 //********************************************************************
