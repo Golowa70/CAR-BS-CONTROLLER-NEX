@@ -109,6 +109,8 @@
 #define MINUTE       60000          //ms
 #define HOUR         3600000        //ms
 
-#define INPUTS_UPDATE_PERIOD   500  //ms
+#define INPUTS_UPDATE_PERIOD   250  //ms
 #define START_DELAY            3000 //ms
+#define PRX_SENSOR_FEEDBACK_DELAY     500 //ms задержка реакции датчика приближения (для стабильности)
+
 #endif
