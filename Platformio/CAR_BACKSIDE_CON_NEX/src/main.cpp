@@ -118,7 +118,7 @@ void setup() {
   //Serial1.write(0xff);
   //Serial1.write(0xff);
   //Serial1.write(0xff); 
-  delay(1000);            //задержка
+  delay(2000);            //задержка
   myNex.begin(NEXTION_BAUD_RATE); // 
   myNex.writeStr("page 12");
   myNex.writeStr("page 12");
@@ -1098,108 +1098,6 @@ void  trigger7 (){
 
       flag_ow_scan_to_start = TRUE;  
       
-      /*
-      if(!flag_ow_scanned){
-
-            myNex.writeStr("p9t0.txt", "SCANNING...");    
-            delay(1000);
-
-            uint8_t address[8];
-            uint8_t count_sensors = 0;
-            String tempString = "";
-            String tempString2;
-
-            if (oneWire.search(address)){
-            
-                  do {
-                        count_sensors++;
-                                   
-                        switch (count_sensors)
-                        {
-                              case 1:
-                                    for (uint8_t j = 0; j < 8; j++)
-                                    { 
-                                    setpoints_data.sensors_ID_array[INSIDE_SENSOR-1][j] = address[j];  thermometerID_1[j] = address[j];
-                                    tempString2 = String(address[j],HEX);     
-                                    tempString += tempString2;
-                                    if (j < 7)tempString += ". ";
-                                    }
-                                    myNex.writeStr("p9t2.txt", tempString);
-                                    tempString = ""; tempString2 = "";
-                                    break;
-
-                              case 2:
-                                    for (uint8_t j = 0; j < 8; j++)
-                                    { 
-                                    setpoints_data.sensors_ID_array[OUTSIDE_SENSOR-1][j] = address[j];  thermometerID_2[j] = address[j];
-                                    tempString2 = String(address[j],HEX);     
-                                    tempString += tempString2;
-                                    if (j < 7)tempString += ". ";
-                                    }
-                                    myNex.writeStr("p9t3.txt", tempString);
-                                    tempString = ""; tempString2 = "";
-                                    break;
-                              case 3:
-                                    for (uint8_t j = 0; j < 8; j++)
-                                    { 
-                                    setpoints_data.sensors_ID_array[SPARE_SENSOR-1][j] = address[j];  thermometerID_3[j] = address[j];
-                                    tempString2 = String(address[j],HEX);     
-                                    tempString += tempString2;
-                                    if (j < 7)tempString += ". ";
-                                    }
-                                    myNex.writeStr("p9t4.txt", tempString);
-                                    tempString = ""; tempString2 = "";
-                                    break;        
-                              
-                              default:
-                              break;
-                        }
-
-                       if(count_sensors>3)break;  // если найдено больше трёх датчиков - выходим из цикла
-
-                  } while (oneWire.search(address));
-                  
-            }
-
-
-            if(count_sensors) 
-            {
-                  tempString = "FOUND ";
-                  tempString2 = String(count_sensors, HEX);
-                  tempString += tempString2;
-                  tempString2 = " SENSORS";
-                  tempString += tempString2;
-                  myNex.writeStr("p9t0.txt", tempString); 
-                  tempString = "";
-                  tempString2 = "";   
-                  
-
-                  temp_sensors.requestTemperatures();
-                  delay(1000);
-                  main_data.inside_temperature = temp_sensors.getTempC(thermometerID_1);
-                  main_data.outside_temperature = temp_sensors.getTempC(thermometerID_2);
-                  main_data.spare_temperature = temp_sensors.getTempC(thermometerID_3);
-                  
-                  myNex.writeStr("p9b0.txt", "Save");
-                        
-            }
-            else
-            {
-                  myNex.writeStr("p9t0.txt", "NO SENSOR FOUND");
-                  myNex.writeStr("p9b0.txt", "Exit");
-            }
-
-              
-            flag_ow_scanned = HIGH;
-
-      }
-      else
-      {
-            myNex.writeStr ("page 4");
-            EEPROM.updateBlock(EEPROM_SETPOINTS_ADDRESS, setpoints_data);
-      }
-      
-      */
 } 
 //*******************************************************************************
 
@@ -1534,9 +1432,8 @@ float fnVoltageRead(void){
 
 
             if(timerInputsUpdate.isReady() && timerStartDelay.isReady()) fnInputsUpdate();
-            fnPumpControl();
 
-           if(myNex.currentPageId != ONEWIRESCANNER_PAGE)flag_ow_scanned = LOW;
+            if(myNex.currentPageId != ONEWIRESCANNER_PAGE)flag_ow_scanned = LOW;
 
             main_data.converter_output_state = fnConverterControl(main_data.battery_voltage, setpoints_data.convertet_out_mode);
 
@@ -1630,6 +1527,8 @@ float fnVoltageRead(void){
             fnWaterLevelControl();
             main_data.main_supply_output_state = fnMainPowerControl();
             main_data.sensors_supply_output_state = fnSensorsPowerControl();
+
+            fnPumpControl();
 
             fnOutputsUpdate();
 
