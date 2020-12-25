@@ -1683,9 +1683,9 @@ float fnVoltageRead(void){
                   fnPjonSender();
             }
 
-            taskENTER_CRITICAL();
+           // taskENTER_CRITICAL();
             pjon_RX_response = bus.receive(1000); // прием данных PJON и возврат результата приёма
-            taskEXIT_CRITICAL();      
+            //taskEXIT_CRITICAL();      
             vTaskDelay(2); //  * 15 ms 
       }
  }
