@@ -258,7 +258,7 @@ void setup() {
     ,  "ModBusPool"  // A name just for humans
     ,  1000  // This stack size can be checked & adjusted by reading the Stack Highwater
     ,  NULL
-    ,  2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+    ,  3  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
     ,  NULL );
 
    
@@ -1606,11 +1606,11 @@ void TaskModBusPool( void *pvParameters __attribute__((unused)) )  // This is a 
  {
       while (1)
       {
-            taskENTER_CRITICAL();
+            //taskENTER_CRITICAL();
             vTaskSuspend(TaskMenuUpdate_Handler);
             ModbusRTUServer.poll();
             vTaskResume(TaskMenuUpdate_Handler);
-            taskEXIT_CRITICAL();
+            //taskEXIT_CRITICAL();
             vTaskDelay(10); // *15 ms
       }
  }
