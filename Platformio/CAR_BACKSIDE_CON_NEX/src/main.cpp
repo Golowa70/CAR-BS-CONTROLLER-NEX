@@ -83,6 +83,10 @@ void TaskVoltageMeasurement( void *pvParameters );
 void TaskModBusPool(void *pvParameters );
 void TaskOwScanner(void *pvParameters );
 
+#if(DEBUG_GENERAL) 
+void TaskSerial(void *pvParameters);
+#endif
+
 TaskHandle_t TaskMenuUpdate_Handler;
 TaskHandle_t TaskPjonTransmitter_Handle;
 
@@ -104,29 +108,13 @@ bool fnSensorsPowerControl(void);
 bool fnMainPowerControl(void);
 
  #if(DEBUG_GENERAL)
-      char ptrTaskList[250];
+    //  char ptrTaskList[250];
  #endif
 
 //обработчик прерывания от Timer3
 ISR(TIMER3_A) {
       main_data.wdt_reset_output_state = 1 - main_data.wdt_reset_output_state;
       digitalWrite(WDT_RESET_OUT, main_data.wdt_reset_output_state);
-
-       #if(DEBUG_GENERAL) 
-            Serial.print("- TASK ");
-            Serial.print(pcTaskGetName(TaskPjonTransmitter_Handle)); // Get task name with handler
-            Serial.print(", High Watermark: ");
-            Serial.print(uxTaskGetStackHighWaterMark(TaskPjonTransmitter_Handle));
-            Serial.println(); 
-
-            vTaskList(ptrTaskList);
-            Serial.println(F("**********************************"));
-            Serial.println(F("Task  State   Prio    Stack    Num")); 
-            Serial.println(F("**********************************"));
-            Serial.print(ptrTaskList);
-            Serial.println(F("**********************************")); 
-
-       #endif
 }
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -233,6 +221,15 @@ void setup() {
 
 
   // FreeRTOS
+      #if(DEBUG_GENERAL)
+            xTaskCreate(TaskSerial,
+                  "Serial",
+                  128,
+                  NULL, 
+                  2,
+                  NULL);
+      #endif
+
   xTaskCreate(
     TaskPilikalka
     ,  "Pilikalka"  // A name just for humans
@@ -1858,3 +1855,64 @@ bool fnMainPowerControl(void){
       }        
 }
 //**********************************************************************
+
+//
+#if(DEBUG_GENERAL)
+  void TaskSerial(void *pvParameters)
+      {
+            (void) pvParameters;
+
+            for (;;)
+            {
+                  Serial.println F("======== Tasks status ========");
+                  Serial.print F("Tick count: ");
+                  Serial.print(xTaskGetTickCount());
+                  Serial.print F(", Task count: ");
+                  Serial.print(uxTaskGetNumberOfTasks());
+
+                  Serial.println();
+                  Serial.println();
+
+                  // Serial task status
+                  Serial.print F("- TASK ");
+                  Serial.print(pcTaskGetName(NULL)); // Get task name without handler https://www.freertos.org/a00021.html#pcTaskGetName
+                  Serial.print F(", High Watermark: ");
+                  Serial.print(uxTaskGetStackHighWaterMark(NULL)); // https://www.freertos.org/uxTaskGetStackHighWaterMark.html 
+
+
+                  TaskHandle_t taskSerialHandle = xTaskGetCurrentTaskHandle(); // Get current task handle. https://www.freertos.org/a00021.html#xTaskGetCurrentTaskHandle
+            
+                  Serial.println();
+            
+                  Serial.print F("- TASK ");
+                  Serial.print(pcTaskGetName(TaskPjonTransmitter_Handle)); // Get task name with handler
+                  Serial.print F(", High Watermark: ");
+                  Serial.print(uxTaskGetStackHighWaterMark(TaskPjonTransmitter_Handle));
+                  Serial.println(); 
+                  Serial.println();
+                  Serial.println();
+
+                  /*
+                  vTaskList(ptrTaskList);
+                  Serial.println(F("**********************************"));
+                  Serial.println(F("Task  State   Prio    Stack    Num")); 
+                  Serial.println(F("**********************************"));
+                  Serial.print(ptrTaskList);
+                  Serial.println(F("**********************************")); 
+                  */
+                  
+                  Serial.print F("timerShutdownDelay:  ");
+                  Serial.println(timerShutdownDelay.currentTime());
+                  Serial.print F("timerConverterShutdownDelay:  ");
+                  Serial.println(timerConverterShutdownDelay.currentTime());
+                  Serial.print F("timerScreenOffDelay:  ");
+                  Serial.println(timerScreenOffDelay.currentTime());
+                  Serial.println();
+                  Serial.println();
+                  Serial.println();
+
+            
+                  vTaskDelay( 3000 / portTICK_PERIOD_MS );
+            }
+      }
+#endif      
