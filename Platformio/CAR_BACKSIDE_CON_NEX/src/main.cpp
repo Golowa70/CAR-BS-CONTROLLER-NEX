@@ -104,7 +104,7 @@ bool fnSensorsPowerControl(void);
 bool fnMainPowerControl(void);
 
  #if(DEBUG_GENERAL)
-      
+      char ptrTaskList[250];
  #endif
 
 //обработчик прерывания от Timer3
@@ -117,7 +117,14 @@ ISR(TIMER3_A) {
             Serial.print(pcTaskGetName(TaskPjonTransmitter_Handle)); // Get task name with handler
             Serial.print(", High Watermark: ");
             Serial.print(uxTaskGetStackHighWaterMark(TaskPjonTransmitter_Handle));
-            Serial.println();  
+            Serial.println(); 
+
+            vTaskList(ptrTaskList);
+            Serial.println(F("**********************************"));
+            Serial.println(F("Task  State   Prio    Stack    Num")); 
+            Serial.println(F("**********************************"));
+            Serial.print(ptrTaskList);
+            Serial.println(F("**********************************")); 
 
        #endif
 }
