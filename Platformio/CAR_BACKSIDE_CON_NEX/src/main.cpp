@@ -50,8 +50,6 @@ GFilterRA voltage_filter;
 
 EasyNex myNex(Serial1);
 
-TaskHandle_t TaskMenuUpdate_Handler;
-
 //variables
 uint8_t current_page = MAX_PAGES;
 uint8_t cnt;
@@ -85,6 +83,11 @@ void TaskVoltageMeasurement( void *pvParameters );
 void TaskModBusPool(void *pvParameters );
 void TaskOwScanner(void *pvParameters );
 
+TaskHandle_t TaskMenuUpdate_Handler;
+TaskHandle_t TaskPjonTransmitter_Handle;
+
+
+
 //functions
 void fnMenuStaticDataUpdate(void);
 void fnMenuDynamicDataUpdate(void);
@@ -100,15 +103,33 @@ void fnWaterLevelControl(void);
 bool fnSensorsPowerControl(void);
 bool fnMainPowerControl(void);
 
+ #if(DEBUG_GENERAL)
+      
+ #endif
+
 //обработчик прерывания от Timer3
 ISR(TIMER3_A) {
       main_data.wdt_reset_output_state = 1 - main_data.wdt_reset_output_state;
       digitalWrite(WDT_RESET_OUT, main_data.wdt_reset_output_state);
+
+       #if(DEBUG_GENERAL) 
+            Serial.print("- TASK ");
+            Serial.print(pcTaskGetName(TaskPjonTransmitter_Handle)); // Get task name with handler
+            Serial.print(", High Watermark: ");
+            Serial.print(uxTaskGetStackHighWaterMark(TaskPjonTransmitter_Handle));
+            Serial.println();  
+
+       #endif
 }
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 void setup() {
+
+  #if(DEBUG_GENERAL)    
+      Serial.begin(115200);
+  #endif
+
   Timer3.setPeriod(500000);     // Устанавливаем период таймера 500000 мкс -> 0.5 гц
   Timer3.enableISR(CHANNEL_A);
 
@@ -259,7 +280,7 @@ void setup() {
     ,  1000  // This stack size can be checked & adjusted by reading the Stack Highwater
     ,  NULL
     ,  3  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-    ,  NULL );
+    ,  &TaskPjonTransmitter_Handle );
 
    
     xTaskCreate(
@@ -1607,11 +1628,14 @@ void TaskModBusPool( void *pvParameters __attribute__((unused)) )  // This is a 
       while (1)
       {
             //taskENTER_CRITICAL();
+            //vTaskSuspendAll();
             vTaskSuspend(TaskMenuUpdate_Handler);
             ModbusRTUServer.poll();
             vTaskResume(TaskMenuUpdate_Handler);
             //taskEXIT_CRITICAL();
+            //xTaskResumeAll();
             vTaskDelay(10); // *15 ms
+            //vTaskDelay( 150 / portTICK_PERIOD_MS );
       }
  }
 //********************************************************************
