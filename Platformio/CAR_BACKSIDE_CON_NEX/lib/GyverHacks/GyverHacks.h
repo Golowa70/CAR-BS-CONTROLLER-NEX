@@ -145,7 +145,7 @@ class GTimer
   private:
 	uint32_t _timer;
 	uint32_t _interval;
-	unsigned long _current_time;
+	uint32_t _current_time;
 	boolean _mode = true;
 };
 
