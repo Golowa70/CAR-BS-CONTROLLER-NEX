@@ -17,7 +17,7 @@
 
 #include <ArduinoRS485.h> 
 #include <ArduinoModbus.h>
-
+#include <timers.h>
 
 
 
@@ -87,8 +87,14 @@ void TaskOwScanner(void *pvParameters );
 void TaskSerial(void *pvParameters);
 #endif
 
+TaskHandle_t TaskPilikalka_Handler;
+TaskHandle_t TaskLoop_Handler;
 TaskHandle_t TaskMenuUpdate_Handler;
-TaskHandle_t TaskPjonTransmitter_Handle;
+TaskHandle_t TaskTempSensorsUpdate_Handler;
+TaskHandle_t TaskPjonTransmitt_Handler;
+TaskHandle_t TaskVoltageMeasurement_Handler;
+TaskHandle_t TaskModBusPool_Handler;
+TaskHandle_t TaskOwScanner_Handler;
 
 
 
@@ -191,7 +197,7 @@ void setup() {
   timerShutdownDelay.setMode(MANUAL);
   timerShutdownDelay.setInterval(setpoints_data.shutdown_delay * MINUTE);
   timerScreenOffDelay.setMode(MANUAL);
-  timerScreenOffDelay.setInterval(10000);
+  timerScreenOffDelay.setInterval(setpoints_data.scrreen_off_delay);
   timerMenuDynamicUpdate.setInterval(MENU_UPDATE_PERIOD);
   timerInputsUpdate.setInterval(INPUTS_UPDATE_PERIOD);
   timerStartDelay.setMode(MANUAL);
@@ -233,23 +239,23 @@ void setup() {
   xTaskCreate(
     TaskPilikalka
     ,  "Pilikalka"  // A name just for humans
-    ,  128  // This stack size can be checked & adjusted by reading the Stack Highwater
+    ,  64 // This stack size can be checked & adjusted by reading the Stack Highwater //128
     ,  NULL
     ,  2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-    ,  NULL );
+    ,  &TaskPilikalka_Handler );
 
   xTaskCreate(
     TaskLoop
     ,  "Loop"  // A name just for humans
-    ,  544  // This stack size can be checked & adjusted by reading the Stack Highwater
+    ,  128  // This stack size can be checked & adjusted by reading the Stack Highwater //544
     ,  NULL
     ,  1  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-    ,  NULL );
+    ,  &TaskLoop_Handler );
 
     xTaskCreate(
     TaskMenuUpdate
     ,  "MenuUpdate"  // A name just for humans
-    ,  512  // This stack size can be checked & adjusted by reading the Stack Highwater
+    ,  160  // This stack size can be checked & adjusted by reading the Stack Highwater //512
     ,  NULL
     ,  2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
     ,  &TaskMenuUpdate_Handler );
@@ -260,15 +266,15 @@ void setup() {
     ,  128  // This stack size can be checked & adjusted by reading the Stack Highwater
     ,  NULL
     ,  1  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-    ,  NULL );
+    ,  &TaskTempSensorsUpdate_Handler );
 
     xTaskCreate(
     TaskPjonTransmitter
-    ,  "PjonTransmitter"  // A name just for humans
-    ,  512  // This stack size can be checked & adjusted by reading the Stack Highwater // 512
+    ,  "PjonTransmitt"  // A name just for humans
+    ,  120  // This stack size can be checked & adjusted by reading the Stack Highwater // 512
     ,  NULL
     ,  2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-    ,  NULL );
+    ,  &TaskPjonTransmitt_Handler );
 
     xTaskCreate(
     TaskVoltageMeasurement
@@ -276,15 +282,15 @@ void setup() {
     ,  64  // This stack size can be checked & adjusted by reading the Stack Highwater
     ,  NULL
     ,  1  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-    ,  NULL );
+    ,  &TaskVoltageMeasurement_Handler );
 
     xTaskCreate(
     TaskModBusPool
     ,  "ModBusPool"  // A name just for humans
-    ,  1000  // This stack size can be checked & adjusted by reading the Stack Highwater
+    ,  690 // This stack size can be checked & adjusted by reading the Stack Highwater //1000
     ,  NULL
     ,  3  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-    ,  &TaskPjonTransmitter_Handle );
+    ,  &TaskModBusPool_Handler );
 
    
     xTaskCreate(
@@ -293,7 +299,7 @@ void setup() {
     ,  128  // This stack size can be checked & adjusted by reading the Stack Highwater
     ,  NULL
     ,  3  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-    ,  NULL ); 
+    ,  &TaskOwScanner_Handler ); 
 
 
 }
@@ -1599,9 +1605,9 @@ float fnVoltageRead(void){
                   fnPjonSender();
             }
 
-            //taskENTER_CRITICAL();
+      
             pjon_RX_response = bus.receive(1000); // прием данных PJON и возврат результата приёма
-            //taskEXIT_CRITICAL();      
+           
             vTaskDelay(1); //  * 15 ms 
       }
  }
@@ -1845,14 +1851,16 @@ void TaskOwScanner( void *pvParameters __attribute__((unused)) )  // This is a T
 
 // Main power control + (sleep mode)
 bool fnMainPowerControl(void){
-
+     bool _state;
      if(main_data.ignition_switch_state) {
             timerShutdownDelay.setInterval((uint32_t)setpoints_data.shutdown_delay * HOUR);
-            return true;
+            _state = true;
       }  
       else {
-            if( timerShutdownDelay.isReady() ) return false; 
-      }        
+            if( timerShutdownDelay.isReady() ) _state = false; 
+      }   
+
+      return _state;     
 }
 //**********************************************************************
 
@@ -1880,21 +1888,65 @@ bool fnMainPowerControl(void){
                   Serial.print(uxTaskGetStackHighWaterMark(NULL)); // https://www.freertos.org/uxTaskGetStackHighWaterMark.html 
 
 
-                  TaskHandle_t taskSerialHandle = xTaskGetCurrentTaskHandle(); // Get current task handle. https://www.freertos.org/a00021.html#xTaskGetCurrentTaskHandle
+                  TaskHandle_t taskSerialHandler = xTaskGetCurrentTaskHandle(); // Get current task handle. https://www.freertos.org/a00021.html#xTaskGetCurrentTaskHandle
             
                   Serial.println();
-            
+                  //Pilikalka
                   Serial.print F("- TASK ");
-                  Serial.print(pcTaskGetName(TaskPjonTransmitter_Handle)); // Get task name with handler
+                  Serial.print(pcTaskGetName(TaskPilikalka_Handler)); // Get task name with handler
                   Serial.print F(", High Watermark: ");
-                  Serial.print(uxTaskGetStackHighWaterMark(TaskPjonTransmitter_Handle));
+                  Serial.print(uxTaskGetStackHighWaterMark(TaskPilikalka_Handler));
                   Serial.println(); 
 
+                  //loop
+                  Serial.print F("- TASK ");
+                  Serial.print(pcTaskGetName(TaskLoop_Handler)); // Get task name with handler
+                  Serial.print F(", High Watermark: ");
+                  Serial.print(uxTaskGetStackHighWaterMark(TaskLoop_Handler));
+                  Serial.println(); 
+
+                  //menuUpdate
                   Serial.print F("- TASK ");
                   Serial.print(pcTaskGetName(TaskMenuUpdate_Handler)); // Get task name with handler
                   Serial.print F(", High Watermark: ");
                   Serial.print(uxTaskGetStackHighWaterMark(TaskMenuUpdate_Handler));
                   Serial.println(); 
+
+                  //TempSensorUpdate
+                  Serial.print F("- TASK ");
+                  Serial.print(pcTaskGetName(TaskTempSensorsUpdate_Handler)); // Get task name with handler
+                  Serial.print F(", High Watermark: ");
+                  Serial.print(uxTaskGetStackHighWaterMark(TaskTempSensorsUpdate_Handler));
+                  Serial.println(); 
+
+                  //PjonTransmitter
+                  Serial.print F("- TASK ");
+                  Serial.print(pcTaskGetName(TaskPjonTransmitt_Handler)); // Get task name with handler
+                  Serial.print F(", High Watermark: ");
+                  Serial.print(uxTaskGetStackHighWaterMark(TaskPjonTransmitt_Handler));
+                  Serial.println(); 
+
+                  //VoltageMeasurement
+                  Serial.print F("- TASK ");
+                  Serial.print(pcTaskGetName(TaskVoltageMeasurement_Handler)); // Get task name with handler
+                  Serial.print F(", High Watermark: ");
+                  Serial.print(uxTaskGetStackHighWaterMark(TaskVoltageMeasurement_Handler));
+                  Serial.println(); 
+
+                  //ModBusPool
+                  Serial.print F("- TASK ");
+                  Serial.print(pcTaskGetName(TaskModBusPool_Handler)); // Get task name with handler
+                  Serial.print F(", High Watermark: ");
+                  Serial.print(uxTaskGetStackHighWaterMark(TaskModBusPool_Handler));
+                  Serial.println(); 
+            
+                  //OwScanner
+                  Serial.print F("- TASK ");
+                  Serial.print(pcTaskGetName(TaskOwScanner_Handler)); // Get task name with handler
+                  Serial.print F(", High Watermark: ");
+                  Serial.print(uxTaskGetStackHighWaterMark(TaskOwScanner_Handler));
+                  Serial.println(); 
+                  
 
                   Serial.println();
                   Serial.println();
@@ -1909,17 +1961,17 @@ bool fnMainPowerControl(void){
                   */
                   
                   Serial.print F("timerShutdownDelay:  ");
-                  Serial.println(timerShutdownDelay.currentTime());
+                  Serial.println(timerShutdownDelay.currentTime() / 1000);
                   Serial.print F("timerConverterShutdownDelay:  ");
-                  Serial.println(timerConverterShutdownDelay.currentTime());
+                  Serial.println(timerConverterShutdownDelay.currentTime() /1000);
                   Serial.print F("timerScreenOffDelay:  ");
-                  Serial.println(timerScreenOffDelay.currentTime());
+                  Serial.println(timerScreenOffDelay.currentTime() / 1000);
                   Serial.println();
                   Serial.println();
                   Serial.println();
 
             
-                  vTaskDelay( 3000 / portTICK_PERIOD_MS );
+                  vTaskDelay( 5000 / portTICK_PERIOD_MS );
             }
       }
 #endif      
