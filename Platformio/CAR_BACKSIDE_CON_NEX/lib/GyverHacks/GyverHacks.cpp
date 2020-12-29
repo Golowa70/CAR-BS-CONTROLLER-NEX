@@ -406,11 +406,13 @@ void GTimer::reset() {
 
 uint32_t GTimer::currentTime(){
 	
-	_current_time = _timer - millis();
+	if(_timer > millis() ){
+
+		_current_time = _timer - millis();
 	
-	if(_current_time > 0 ){
-	return _current_time;
+		return _current_time;
 	}
+
 	else {
 		return 0;	
 	}	 
