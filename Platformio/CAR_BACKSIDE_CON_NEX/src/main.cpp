@@ -226,7 +226,7 @@ void setup() {
                   "Serial",
                   128,
                   NULL, 
-                  2,
+                  1,
                   NULL);
       #endif
 
@@ -1889,6 +1889,13 @@ bool fnMainPowerControl(void){
                   Serial.print F(", High Watermark: ");
                   Serial.print(uxTaskGetStackHighWaterMark(TaskPjonTransmitter_Handle));
                   Serial.println(); 
+
+                  Serial.print F("- TASK ");
+                  Serial.print(pcTaskGetName(TaskMenuUpdate_Handler)); // Get task name with handler
+                  Serial.print F(", High Watermark: ");
+                  Serial.print(uxTaskGetStackHighWaterMark(TaskMenuUpdate_Handler));
+                  Serial.println(); 
+
                   Serial.println();
                   Serial.println();
 
