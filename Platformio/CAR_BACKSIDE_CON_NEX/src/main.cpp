@@ -20,7 +20,6 @@
 #include <timers.h>
 
 
-
 #define PJON_INCLUDE_SWBB               // без этого не компилируется
 //#define PJON_INCLUDE_ASYNC_ACK true   //
 //#define TS_RESPONSE_TIME_OUT 0        //
@@ -121,6 +120,8 @@ bool fnMainPowerControl(void);
 ISR(TIMER3_A) {
       main_data.wdt_reset_output_state = 1 - main_data.wdt_reset_output_state;
       digitalWrite(WDT_RESET_OUT, main_data.wdt_reset_output_state);
+
+     // ModbusRTUServer.poll();
 }
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -131,7 +132,7 @@ void setup() {
       Serial.begin(115200);
   #endif
 
-  Timer3.setPeriod(500000);     // Устанавливаем период таймера 500000 мкс -> 0.5 гц
+  Timer3.setPeriod(10000);     // Устанавливаем период таймера 500000 мкс -> 0.5 гц
   Timer3.enableISR(CHANNEL_A);
 
   digitalWrite(MAIN_SUPPLY_OUT,HIGH);
@@ -247,7 +248,7 @@ void setup() {
   xTaskCreate(
     TaskLoop
     ,  "Loop"  // A name just for humans
-    ,  128  // This stack size can be checked & adjusted by reading the Stack Highwater //544
+    ,  192  // This stack size can be checked & adjusted by reading the Stack Highwater //544
     ,  NULL
     ,  1  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
     ,  &TaskLoop_Handler );
@@ -289,7 +290,7 @@ void setup() {
     ,  "ModBusPool"  // A name just for humans
     ,  690 // This stack size can be checked & adjusted by reading the Stack Highwater //1000
     ,  NULL
-    ,  3  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+    ,  2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
     ,  &TaskModBusPool_Handler );
 
    
@@ -1639,13 +1640,13 @@ void TaskModBusPool( void *pvParameters __attribute__((unused)) )  // This is a 
       {
             //taskENTER_CRITICAL();
             //vTaskSuspendAll();
-            vTaskSuspend(TaskMenuUpdate_Handler);
+            //vTaskSuspend(TaskMenuUpdate_Handler);
             ModbusRTUServer.poll();
-            vTaskResume(TaskMenuUpdate_Handler);
-            //taskEXIT_CRITICAL();
-            //xTaskResumeAll();
-            vTaskDelay(10); // *15 ms
-            //vTaskDelay( 150 / portTICK_PERIOD_MS );
+            //vTaskResume(TaskMenuUpdate_Handler);
+           // taskEXIT_CRITICAL();
+           // xTaskResumeAll();
+            vTaskDelay(20); // *15 ms
+            //vTaskDelay( 450 / portTICK_PERIOD_MS );
       }
  }
 //********************************************************************
