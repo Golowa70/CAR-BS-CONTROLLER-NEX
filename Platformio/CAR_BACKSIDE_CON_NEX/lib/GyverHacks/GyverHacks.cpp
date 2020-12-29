@@ -408,7 +408,7 @@ uint32_t GTimer::currentTime(){
 	
 	_current_time = _timer - millis();
 	
-	if(_current_time > 0 && _current_time < 100000 ){
+	if(_current_time > 0 ){
 	return _current_time;
 	}
 	else {
