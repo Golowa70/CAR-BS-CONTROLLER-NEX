@@ -128,14 +128,17 @@ ISR(TIMER3_A) {
 
 void setup() {
 
+  fnIOInit();
+
+  digitalWrite(MAIN_SUPPLY_OUT,HIGH);
+
   #if(DEBUG_GENERAL)    
       Serial.begin(115200);
   #endif
 
-  Timer3.setPeriod(10000);     // Устанавливаем период таймера 500000 мкс -> 0.5 гц
+  Timer3.setPeriod(500000);     // Устанавливаем период таймера 500000 мкс -> 0.5 гц
   Timer3.enableISR(CHANNEL_A);
 
-  digitalWrite(MAIN_SUPPLY_OUT,HIGH);
   //меняем скорость Nextion 
   //Serial1.begin(19200); // нынешняя скорость
   //Serial1.print("bauds=115200"); // новая скорость
@@ -147,15 +150,13 @@ void setup() {
   myNex.writeStr("page 12");
   myNex.writeStr("page 12");
   myNex.writeStr("sleep=0");
-  delay(1000);
+  delay(500);
  //myNex.writeStr("dim=25");
  //myNex.writeStr("sleep=1");
  //delay(5000);
  //myNex.writeStr("sleep=0");
  // Serial.begin(9600);
 
-  fnIOInit();
- 
  analogReference(INTERNAL2V56);          // внутренний исочник опорного напряжения 2.56в
  voltage_filter.setCoef(0.1);           // установка коэффициента фильтрации (0.0... 1.0). Чем меньше, тем плавнее фильтр
  voltage_filter.setStep(10);            // установка шага фильтрации (мс). Чем меньше, тем резче фильтр
@@ -196,9 +197,9 @@ void setup() {
   timerPjonFloatFault.setInterval(FLOAT_FAULT_TIME);
   timerPjonTransmittPeriod.setInterval(setpoints_data.pjon_transmitt_period * SECOND);
   timerShutdownDelay.setMode(MANUAL);
-  timerShutdownDelay.setInterval(setpoints_data.shutdown_delay * MINUTE);
+  timerShutdownDelay.setInterval(setpoints_data.shutdown_delay * HOUR);
   timerScreenOffDelay.setMode(MANUAL);
-  timerScreenOffDelay.setInterval(setpoints_data.scrreen_off_delay);
+  timerScreenOffDelay.setInterval(10000);
   timerMenuDynamicUpdate.setInterval(MENU_UPDATE_PERIOD);
   timerInputsUpdate.setInterval(INPUTS_UPDATE_PERIOD);
   timerStartDelay.setMode(MANUAL);
@@ -1443,7 +1444,7 @@ float fnVoltageRead(void){
             ModbusRTUServer.discreteInputWrite(0x05, main_data.light_output_state);
             ModbusRTUServer.discreteInputWrite(0x06, flag_pjon_float_sensor_connected);
             ModbusRTUServer.discreteInputWrite(0x07, flag_pjon_flow_sensor_connected);
-        //    ModbusRTUServer.discreteInputWrite(0x08, main_data.sensors_supply_output_state);
+            ModbusRTUServer.discreteInputWrite(0x08, main_data.sensors_supply_output_state);
             ModbusRTUServer.discreteInputWrite(0x09, main_data.low_washer_water_level); // 
             ModbusRTUServer.inputRegisterWrite(0x00, main_data.battery_voltage * 10);
             ModbusRTUServer.inputRegisterWrite(0x01, main_data.inside_temperature * 10);
@@ -1646,7 +1647,7 @@ void TaskModBusPool( void *pvParameters __attribute__((unused)) )  // This is a 
            // taskEXIT_CRITICAL();
            // xTaskResumeAll();
             vTaskDelay(20); // *15 ms
-            //vTaskDelay( 450 / portTICK_PERIOD_MS );
+            //vTaskDelay( 300 / portTICK_PERIOD_MS );
       }
  }
 //********************************************************************
