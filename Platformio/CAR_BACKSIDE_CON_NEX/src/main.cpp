@@ -34,7 +34,7 @@ DeviceAddress thermometerID_1, thermometerID_2, thermometerID_3; // резерв
 
 GTimer timerSensorsUpdate; //таймер период обновления датчиков температуры
 GTimer timerPumpOffDelay;  //
-GTimer timerConverterOffDelay;
+GTimer timerLowUConverterOffDelay;
 GTimer timerConverterShutdownDelay;
 GTimer timerPjonFloatFault;
 GTimer timerPjonTransmittPeriod;
@@ -49,23 +49,7 @@ GFilterRA voltage_filter;
 
 EasyNex myNex(Serial1);
 
-//variables
-uint8_t current_page = MAX_PAGES;
-uint8_t cnt;
-uint8_t current_item;
-uint8_t *variable_value = NULL;
-bool flag_value_changed;
-uint8_t var_min_value;
-uint8_t var_max_value;
-uint8_t pump_timer_current_time;
-bool flag_ow_scanned;
-bool flag_ow_scan_to_start;
-String tempString = "";
-String tempString2;
-uint32_t old_time;
-bool flag_sensors_update;
-
-
+//мелодии
 const  char  * bip_1 = " Connect:d=4,o=6,b=2000:4g5,1p,2g";
 const  char  * bip_2 = " Disconnect:d=4,o=6,b=2000:4g,1p,2g5";
 const  char  * melody_1 = " melody1:d=4,o=7,b=1000:4c,4d,4e,4f,4g,4a,4h";
@@ -73,6 +57,7 @@ const  char  * melody_2 = " melody2:d=4,o=7,b=500:4c,4d,4e,4f,4g,4a,4h";
 const  char  * melody_3 = " melody3:d=4,o=7,b=50:e";
 const  char  * melody_4 = " melody4:d=4,o=5,b=160:1p,e6,8p,e6,8p,e6,8p";
 
+// FreeRTOS functions
 void TaskPilikalka( void *pvParameters );
 void TaskLoop( void *pvParameters );
 void TaskMenuUpdate( void *pvParameters );
@@ -191,8 +176,8 @@ void setup() {
 
   timerSensorsUpdate.setInterval(SENSORS_UPDATE_PERIOD); 
   timerPumpOffDelay.setMode(MANUAL); 
-  timerConverterOffDelay.setMode(MANUAL);
-   timerConverterOffDelay.setInterval(((uint32_t)setpoints_data.converter_off_delay) * MINUTE);
+  timerLowUConverterOffDelay.setMode(MANUAL);
+   timerLowUConverterOffDelay.setInterval(((uint32_t)setpoints_data.lowUconverter_off_delay) * MINUTE);
   timerConverterShutdownDelay.setMode(MANUAL);
   timerPjonFloatFault.setInterval(FLOAT_FAULT_TIME);
   timerPjonTransmittPeriod.setInterval(setpoints_data.pjon_transmitt_period * SECOND);
@@ -228,16 +213,7 @@ void setup() {
 
 
 
-  // FreeRTOS
-      #if(DEBUG_GENERAL)
-            xTaskCreate(TaskSerial,
-                  "Serial",
-                  128,
-                  NULL, 
-                  1,
-                  NULL);
-      #endif
-
+  //********** FreeRTOS tasks ***************************************************
   xTaskCreate(
     TaskPilikalka
     ,  "Pilikalka"  // A name just for humans
@@ -303,6 +279,15 @@ void setup() {
     ,  3  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
     ,  &TaskOwScanner_Handler ); 
 
+
+      #if(DEBUG_GENERAL)
+            xTaskCreate(TaskSerial,
+                  "Serial",
+                  128,
+                  NULL, 
+                  1,
+                  NULL);
+      #endif
 
 }
 
@@ -574,7 +559,7 @@ void fnMenuDynamicDataUpdate(void){
 
             case  CONVSET_PAGE:
                                     //обновляем динамические параметры страницы
-                                    myNex. writeNum(F("p6n0.val"), setpoints_data.converter_off_delay);
+                                    myNex. writeNum(F("p6n0.val"), setpoints_data.lowUconverter_off_delay);
                                     myNex. writeNum(F("p6n1.val"), setpoints_data.converter_shutdown_delay);
                                     myNex. writeNum(F("p6n2.val"), setpoints_data.converter_voltage_off);
                                     myNex. writeNum(F("p6n3.val"), setpoints_data.converter_voltage_on);
@@ -598,7 +583,7 @@ void fnMenuDynamicDataUpdate(void){
                                     }
 
                                     //меняем цвет уставки если значение изменено но не сохранено в EEPROM
-                                    if(old_setpoints_data.converter_off_delay != setpoints_data.converter_off_delay)myNex.writeNum("p6n0.pco", YELLOW);
+                                    if(old_setpoints_data.lowUconverter_off_delay != setpoints_data.lowUconverter_off_delay)myNex.writeNum("p6n0.pco", YELLOW);
                                     else myNex.writeNum(F("p6n0.pco"), WHITE);
                                     if(old_setpoints_data.converter_shutdown_delay != setpoints_data.converter_shutdown_delay)myNex.writeNum(F("p6n1.pco"), YELLOW);
                                     else myNex.writeNum(F("p6n1.pco"), WHITE);
@@ -617,7 +602,7 @@ void fnMenuDynamicDataUpdate(void){
                                                 myNex.writeNum(F("p6t3.pco"), WHITE);
                                                 myNex.writeNum(F("p6t4.pco"), WHITE);
                                                 myNex.writeNum(F("p6t5.pco"), WHITE);
-                                                variable_value = &setpoints_data.converter_off_delay;
+                                                variable_value = &setpoints_data.lowUconverter_off_delay;
                                                 var_min_value = 0;
                                                 var_max_value = 32; //min
                                                 break;
@@ -1232,13 +1217,13 @@ bool fnConverterControl(float voltage, uint8_t mode){
      {
             case OFF_MODE:
                         state = LOW; 
-                        timerConverterOffDelay.stop(); // останавливаем таймер выключения
+                        timerLowUConverterOffDelay.stop(); // останавливаем таймер выключения
                         timerConverterShutdownDelay.stop(); //
                         break;
                         
             case ON_MODE:
                         state = HIGH;
-                        timerConverterOffDelay.stop(); // останавливаем таймер выключения
+                        timerLowUConverterOffDelay.stop(); // останавливаем таймер выключения
                         timerConverterShutdownDelay.stop();
                         break;
 
@@ -1246,22 +1231,22 @@ bool fnConverterControl(float voltage, uint8_t mode){
                         if(voltage >= setpoints_data.converter_voltage_on ){  // 
                              if(! flag_convOff_due_ign_switch) state = HIGH; // если напряжение в пределах нормы включаем преобразователь
                               flag_convOff_due_voltage = LOW; // флаг что было отключение по низкому напряжению
-                              timerConverterOffDelay.stop(); // останавливваем таймер выключения 
+                              timerLowUConverterOffDelay.stop(); // останавливваем таймер выключения 
 
                         }
 
                          
                         if( voltage > setpoints_data.converter_voltage_off ) { //               
-                              timerConverterOffDelay.setInterval(((uint32_t)setpoints_data.converter_off_delay) * MINUTE); // заряжаем таймер на выключение
+                              timerLowUConverterOffDelay.setInterval(((uint32_t)setpoints_data.lowUconverter_off_delay) * MINUTE); // заряжаем таймер на выключение
 
                         }
 
                         else {
 
-                              if( timerConverterOffDelay.isReady()){
+                              if( timerLowUConverterOffDelay.isReady()){
                                     state = LOW; 
                                     flag_convOff_due_voltage = HIGH; // флаг что было отключение по низкому напряжению
-                                    timerConverterOffDelay.stop(); // останавливаем таймер выключения
+                                    timerLowUConverterOffDelay.stop(); // останавливаем таймер выключения
                                     
                               }
                         }
@@ -1305,12 +1290,6 @@ float fnVoltageRead(void){
 // fnPjonReceiver 
 
    void pj_receiver_function(uint8_t *payload, uint16_t length, const PJON_Packet_Info &packet_info) {
-      #if(DEBUG_PJON_RX==1)
-      Serial.print("Receiver device id: ");
-      Serial.print(packet_info.receiver_id);
-      Serial.print(" | Transmitter device id: ");
-      Serial.println(packet_info.sender_id);
-      #endif
 
   receive_from_ID = packet_info.sender_id; // от кого пришли данные 
   
@@ -1445,15 +1424,16 @@ float fnVoltageRead(void){
             ModbusRTUServer.discreteInputWrite(0x06, flag_pjon_float_sensor_connected);
             ModbusRTUServer.discreteInputWrite(0x07, flag_pjon_flow_sensor_connected);
             ModbusRTUServer.discreteInputWrite(0x08, main_data.sensors_supply_output_state);
-            ModbusRTUServer.discreteInputWrite(0x09, main_data.low_washer_water_level); // 
+            ModbusRTUServer.discreteInputWrite(0x09, main_data.low_washer_water_level); //
+             
             ModbusRTUServer.inputRegisterWrite(0x00, main_data.battery_voltage * 10);
             ModbusRTUServer.inputRegisterWrite(0x01, main_data.inside_temperature * 10);
             ModbusRTUServer.inputRegisterWrite(0x02, main_data.outside_temperature * 10);
             ModbusRTUServer.inputRegisterWrite(0x03, main_data.water_level_percent);
             ModbusRTUServer.inputRegisterWrite(0x04, main_data.water_level_liter);
 
-            ModbusRTUServer.inputRegisterWrite(0x05, pj_fault_counter_1);
-            ModbusRTUServer.inputRegisterWrite(0x06, pj_fault_counter_2);
+            ModbusRTUServer.inputRegisterWrite(0x05, pj_float_sensor_fault_counter);
+            ModbusRTUServer.inputRegisterWrite(0x06, pj_flow_sensor_fault_counter);
 
 
             if(timerInputsUpdate.isReady() && timerStartDelay.isReady()) fnInputsUpdate();
@@ -1463,7 +1443,7 @@ float fnVoltageRead(void){
             main_data.converter_output_state = fnConverterControl(main_data.battery_voltage, setpoints_data.convertet_out_mode);
 
 
-            //******* отслеживание изменения состояния двери
+            //******* отслеживание изменения состояния двери для звуковой индикации
             if(main_data.door_switch_state != flag_door_switch_old_state ){
                   flag_door_switch_old_state = main_data.door_switch_state;
                   if(main_data.door_switch_state){
@@ -1510,7 +1490,7 @@ float fnVoltageRead(void){
                   
                   if(!flag_pjon_float_sensor_connected){
                         if ( !rtttl::isPlaying() ) rtttl :: begin (BUZZER, melody_3);
-                        pj_fault_counter_1++; 
+                        pj_float_sensor_fault_counter++; 
                   }
                   else
                   {
@@ -1535,7 +1515,7 @@ float fnVoltageRead(void){
                   
                   if(!flag_pjon_flow_sensor_connected){
                         if ( !rtttl::isPlaying() ) rtttl :: begin (BUZZER, melody_3);
-                        pj_fault_counter_2++; 
+                        pj_flow_sensor_fault_counter++; 
                   }
                   else
                   {
@@ -1585,8 +1565,8 @@ float fnVoltageRead(void){
  {
       while (1)
       {
-            flag_sensors_update = 1-flag_sensors_update;
-            if(!flag_sensors_update)temp_sensors.requestTemperatures();  //команда начала преобразования 
+            flag_ds18b20_update = 1-flag_ds18b20_update;
+            if(!flag_ds18b20_update)temp_sensors.requestTemperatures();  //команда начала преобразования 
             else{
                   main_data.inside_temperature = temp_sensors.getTempC(thermometerID_1);  // считывание температуры
                   main_data.outside_temperature = temp_sensors.getTempC(thermometerID_2);
@@ -1952,23 +1932,37 @@ bool fnMainPowerControl(void){
 
                   Serial.println();
                   Serial.println();
-
-                  /*
-                  vTaskList(ptrTaskList);
-                  Serial.println(F("**********************************"));
-                  Serial.println(F("Task  State   Prio    Stack    Num")); 
-                  Serial.println(F("**********************************"));
-                  Serial.print(ptrTaskList);
-                  Serial.println(F("**********************************")); 
-                  */
                   
-                  Serial.print F("timerShutdownDelay:  ");
-                  Serial.println(timerShutdownDelay.currentTime() / 1000);
+
+                  Serial.print F("timerPumpOffDelay:  ");
+                  Serial.println(timerPumpOffDelay.currentTime() / 1000);
+                  Serial.print F("timerLowUConverterOffDelay:  ");
+                  Serial.println(timerLowUConverterOffDelay.currentTime() / 1000);
                   Serial.print F("timerConverterShutdownDelay:  ");
                   Serial.println(timerConverterShutdownDelay.currentTime() /1000);
+                  Serial.print F("timerShutdownDelay:  ");
+                  Serial.println(timerShutdownDelay.currentTime() / 1000);
                   Serial.print F("timerScreenOffDelay:  ");
                   Serial.println(timerScreenOffDelay.currentTime() / 1000);
-                  Serial.println();
+
+
+                  Serial.print F("door_switch_state:  ");
+                  Serial.print (main_data.door_switch_state);
+                  Serial.print F("ignition_switch_state:  ");
+                  Serial.print (main_data.ignition_switch_state);
+                  Serial.print F("proximity_sensor_state:  ");
+                  Serial.print (main_data.proximity_sensor_state);
+                  Serial.print F("proximity_sensor_state:  ");
+
+                  Serial.print F("converter_output_state:  ");
+                  Serial.print (main_data.converter_output_state);
+                  Serial.print F("light_output_state:  ");
+                  Serial.print (main_data.light_output_state);
+                  Serial.print F("pump_output_state:  ");
+                  Serial.print (main_data.pump_output_state);
+
+
+
                   Serial.println();
                   Serial.println();
 
