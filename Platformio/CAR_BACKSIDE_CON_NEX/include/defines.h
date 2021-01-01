@@ -73,12 +73,12 @@
 #define BUTTON_ON_BOARD                     10
 
 //outputs
-#define WATER_PUMP_OUTPUT_1      22 // 
-#define LIGHT_OUTPUT_2           23 // 
-#define CONVERTER_OUTPUT_3       24 // 
-#define SENSORS_SUPPLY_5v         7 // 
-#define MAIN_SUPPLY_OUT			  9 //
-#define BUZZER                    2 // 
+#define WATER_PUMP_OUTPUT_1      22  
+#define LIGHT_OUTPUT_2           23  
+#define CONVERTER_OUTPUT_3       24  
+#define SENSORS_SUPPLY_5v         7  
+#define MAIN_SUPPLY_OUT			  9 
+#define BUZZER                    2  
 #define BUILTIN_LED              13
 #define WDT_RESET_OUT             8  
 
@@ -89,26 +89,18 @@
 #define PJON_WATER_FLOW_SENSOR_ID     4
 #define PJON_MAX_NODES                2 // пока два
 
+
 #define VERSION "ver 1.0"
 #define DIVISION_RATIO_VOLTAGE_INPUT  0.0208    // разрешение 0.0025  уможить на коэфициент резистивного делителя 8.2
 
-/*
-//water level sensor
-#define WATER_LEVEL_LESS_THEN_25      1      
-#define WATER_LEVEL_25                2
-#define WATER_LEVEL_50                3
-#define WATER_LEVEL_75                4
-#define WATER_LEVEL_100               5
-#define WATER_LEVEL_SENSOR_DEFECTIVE  6
-
-*/
 
 #define SECOND       1000           //ms
 #define MINUTE       60000          //ms
 #define HOUR         3600000        //ms
 
-#define INPUTS_UPDATE_PERIOD   100  //ms
-#define START_DELAY            3000 //ms
-#define PRX_SENSOR_FEEDBACK_DELAY     500 //ms задержка реакции датчика приближения (для стабильности)
+
+#define INPUTS_UPDATE_PERIOD   100        //ms период обновления опроса входов
+#define START_DELAY            3000       //ms задержка опроса входов после подачи питания (пока датчики запустятся)
+#define PRX_SENSOR_FEEDBACK_DELAY   500   //ms задержка реакции датчика приближения (для стабильности)
 
 #endif
