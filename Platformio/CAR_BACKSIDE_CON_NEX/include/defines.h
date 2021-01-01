@@ -13,12 +13,10 @@
 #define GRAY        27469
 
 //timers
-#define SENSORS_UPDATE_PERIOD       1000
-#define FLOAT_FAULT_TIME            5000
-#define PJON_TX_PERIOD              2000
+#define TEMP_SENSORS_UPDATE_PERIOD   1000
 #define MENU_UPDATE_PERIOD           500
 
-#define NEXTION_BAUD_RATE           115200
+#define NEXTION_BAUD_RATE            115200
 
 //menu pages
 #define MAIN_PAGE              0
