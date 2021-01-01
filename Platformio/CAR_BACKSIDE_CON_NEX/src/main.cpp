@@ -5,6 +5,7 @@
 #include "init_functions.h"
 #include "variables.h"
 
+//libs
 #include "EasyNextionLibrary.h"
 #include <EEPROMex.h>
 #include <EEPROMVar.h>
@@ -15,7 +16,6 @@
 #include <NonBlockingRtttl.h>            // библиотека пиликалки
 #include <GyverTimers.h>
 #include <Arduino_FreeRTOS.h>
-
 #include <ArduinoRS485.h> 
 #include <ArduinoModbus.h>
 #include <timers.h>
@@ -71,6 +71,7 @@ void TaskOwScanner(void *pvParameters );
 void TaskDebugSerial(void *pvParameters);
 #endif
 
+
 TaskHandle_t TaskPilikalka_Handler;
 TaskHandle_t TaskLoop_Handler;
 TaskHandle_t TaskMenuUpdate_Handler;
@@ -79,7 +80,6 @@ TaskHandle_t TaskPjonTransmitt_Handler;
 TaskHandle_t TaskVoltageMeasurement_Handler;
 TaskHandle_t TaskModBusPool_Handler;
 TaskHandle_t TaskOwScanner_Handler;
-
 
 
 //functions
@@ -97,21 +97,19 @@ void fnWaterLevelControl(void);
 bool fnSensorsPowerControl(void);
 bool fnMainPowerControl(void);
 
- #if(DEBUG_GENERAL)
-    //  char ptrTaskList[250];
- #endif
 
-//обработчик прерывания от Timer3
-ISR(TIMER3_A) {
-      main_data.wdt_reset_output_state = 1 - main_data.wdt_reset_output_state;
-      digitalWrite(WDT_RESET_OUT, main_data.wdt_reset_output_state);
+//обработчик прерывания от Timer3 (сброс внешнего WDT)
+      ISR(TIMER3_A) {
+            main_data.wdt_reset_output_state = 1 - main_data.wdt_reset_output_state;
+            digitalWrite(WDT_RESET_OUT, main_data.wdt_reset_output_state);
+      }
 
-     // ModbusRTUServer.poll();
-}
-
-//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+//>>>>>>>>>>>>> SETUP >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 void setup() {
+
+  Timer3.setPeriod(500000);     // Устанавливаем период таймера 500000 мкс -> 0.5 гц (сброс внешнего WDT)
+  Timer3.enableISR(CHANNEL_A);
 
   fnIOInit();
 
@@ -121,17 +119,16 @@ void setup() {
       Serial.begin(115200);
   #endif
 
-  Timer3.setPeriod(500000);     // Устанавливаем период таймера 500000 мкс -> 0.5 гц
-  Timer3.enableISR(CHANNEL_A);
 
   //меняем скорость Nextion 
-  //Serial1.begin(19200); // нынешняя скорость
-  //Serial1.print("bauds=115200"); // новая скорость
-  //Serial1.write(0xff);
-  //Serial1.write(0xff);
-  //Serial1.write(0xff); 
-  delay(2000);            //задержка
-  myNex.begin(NEXTION_BAUD_RATE); // 
+      //Serial1.begin(19200); // нынешняя скорость
+      //Serial1.print("bauds=115200"); // новая скорость
+      //Serial1.write(0xff);
+      //Serial1.write(0xff);
+      //Serial1.write(0xff); 
+
+  delay(2000);                       //задержка
+  myNex.begin(NEXTION_BAUD_RATE);   // 
   myNex.writeStr("page 12");
   myNex.writeStr("page 12");
   myNex.writeStr("sleep=0");
@@ -140,11 +137,7 @@ void setup() {
  //myNex.writeStr("sleep=1");
  //delay(5000);
  //myNex.writeStr("sleep=0");
- // Serial.begin(9600);
-
- analogReference(INTERNAL2V56);          // внутренний исочник опорного напряжения 2.56в
- voltage_filter.setCoef(0.1);           // установка коэффициента фильтрации (0.0... 1.0). Чем меньше, тем плавнее фильтр
- voltage_filter.setStep(10);            // установка шага фильтрации (мс). Чем меньше, тем резче фильтр
+ 
 
   if(fnEEpromInit()){
       myNex.writeStr("p12t0.txt", "Ok!");
@@ -156,7 +149,6 @@ void setup() {
       memcpy(&thermometerID_2, &setpoints_data.sensors_ID_array[setpoints_data.sensors_select_array[OUTSIDE_SENSOR-1]-1] [0], sizeof(thermometerID_2)); //  
       memcpy(&thermometerID_3, &setpoints_data.sensors_ID_array[setpoints_data.sensors_select_array[SPARE_SENSOR-1]-1] [0], sizeof(thermometerID_3)); //  
  
-      delay(1000);
    }
    else
    {
@@ -165,9 +157,11 @@ void setup() {
    }
    
 
-  delay(500);
-  myNex.writeStr("page 0");
-  
+  delay(1500);
+
+  voltage_filter.setCoef(0.1);           // установка коэффициента фильтрации (0.0... 1.0). Чем меньше, тем плавнее фильтр
+  voltage_filter.setStep(10);            // установка шага фильтрации (мс). Чем меньше, тем резче фильтр
+
   temp_sensors.begin();
   temp_sensors.setResolution(thermometerID_1, TEMPERATURE_PRECISION); 
   temp_sensors.setResolution(thermometerID_2, TEMPERATURE_PRECISION);
@@ -208,75 +202,72 @@ void setup() {
   
   timerConverterShutdownDelay.setInterval((setpoints_data.converter_shutdown_delay) * MINUTE);
 
-  //rtttl :: begin (BUZZER, melody_2);   // пиликаем при старте
-
-
 
   //********** FreeRTOS tasks ***************************************************
-  xTaskCreate(
-    TaskPilikalka
-    ,  "Pilikalka"  // A name just for humans
-    ,  64 // This stack size can be checked & adjusted by reading the Stack Highwater //128
-    ,  NULL
-    ,  2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-    ,  &TaskPilikalka_Handler );
+      xTaskCreate(
+      TaskPilikalka
+      ,  "Pilikalka"  // A name just for humans
+      ,  64 // This stack size can be checked & adjusted by reading the Stack Highwater //128
+      ,  NULL
+      ,  2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+      ,  &TaskPilikalka_Handler );
 
-  xTaskCreate(
-    TaskLoop
-    ,  "Loop"  // A name just for humans
-    ,  192  // This stack size can be checked & adjusted by reading the Stack Highwater //544
-    ,  NULL
-    ,  1  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-    ,  &TaskLoop_Handler );
+      xTaskCreate(
+      TaskLoop
+      ,  "Loop"  // A name just for humans
+      ,  192  // This stack size can be checked & adjusted by reading the Stack Highwater //544
+      ,  NULL
+      ,  1  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+      ,  &TaskLoop_Handler );
 
-    xTaskCreate(
-    TaskMenuUpdate
-    ,  "MenuUpdate"  // A name just for humans
-    ,  160  // This stack size can be checked & adjusted by reading the Stack Highwater //512
-    ,  NULL
-    ,  2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-    ,  &TaskMenuUpdate_Handler );
+      xTaskCreate(
+      TaskMenuUpdate
+      ,  "MenuUpdate"  // A name just for humans
+      ,  160  // This stack size can be checked & adjusted by reading the Stack Highwater //512
+      ,  NULL
+      ,  2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+      ,  &TaskMenuUpdate_Handler );
 
-    xTaskCreate(
-    TaskTempSensorsUpdate
-    ,  "TempSensorsUpdate"  // A name just for humans
-    ,  128  // This stack size can be checked & adjusted by reading the Stack Highwater
-    ,  NULL
-    ,  1  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-    ,  &TaskTempSensorsUpdate_Handler );
+      xTaskCreate(
+      TaskTempSensorsUpdate
+      ,  "TempSensorsUpdate"  // A name just for humans
+      ,  128  // This stack size can be checked & adjusted by reading the Stack Highwater
+      ,  NULL
+      ,  1  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+      ,  &TaskTempSensorsUpdate_Handler );
 
-    xTaskCreate(
-    TaskPjonTransmitter
-    ,  "PjonTransmitt"  // A name just for humans
-    ,  120  // This stack size can be checked & adjusted by reading the Stack Highwater // 512
-    ,  NULL
-    ,  2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-    ,  &TaskPjonTransmitt_Handler );
+      xTaskCreate(
+      TaskPjonTransmitter
+      ,  "PjonTransmitt"  // A name just for humans
+      ,  120  // This stack size can be checked & adjusted by reading the Stack Highwater // 512
+      ,  NULL
+      ,  2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+      ,  &TaskPjonTransmitt_Handler );
 
-    xTaskCreate(
-    TaskVoltageMeasurement
-    ,  "VoltageMeasurement"  // A name just for humans
-    ,  64  // This stack size can be checked & adjusted by reading the Stack Highwater
-    ,  NULL
-    ,  1  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-    ,  &TaskVoltageMeasurement_Handler );
+      xTaskCreate(
+      TaskVoltageMeasurement
+      ,  "VoltageMeasurement"  // A name just for humans
+      ,  64  // This stack size can be checked & adjusted by reading the Stack Highwater
+      ,  NULL
+      ,  1  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+      ,  &TaskVoltageMeasurement_Handler );
 
-    xTaskCreate(
-    TaskModBusPool
-    ,  "ModBusPool"  // A name just for humans
-    ,  690 // This stack size can be checked & adjusted by reading the Stack Highwater //1000
-    ,  NULL
-    ,  2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-    ,  &TaskModBusPool_Handler );
+      xTaskCreate(
+      TaskModBusPool
+      ,  "ModBusPool"  // A name just for humans
+      ,  690 // This stack size can be checked & adjusted by reading the Stack Highwater //1000
+      ,  NULL
+      ,  2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+      ,  &TaskModBusPool_Handler );
 
-   
-    xTaskCreate(
-    TaskOwScanner
-    ,  "OwScanner"  // A name just for humans
-    ,  128  // This stack size can be checked & adjusted by reading the Stack Highwater
-    ,  NULL
-    ,  3  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-    ,  &TaskOwScanner_Handler ); 
+      
+      xTaskCreate(
+      TaskOwScanner
+      ,  "OwScanner"  // A name just for humans
+      ,  128  // This stack size can be checked & adjusted by reading the Stack Highwater
+      ,  NULL
+      ,  3  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+      ,  &TaskOwScanner_Handler ); 
 
 
       #if(DEBUG_GENERAL)
@@ -287,6 +278,11 @@ void setup() {
                   1,
                   NULL);
       #endif
+
+  myNex.writeStr("page 0");
+  myNex.writeStr("page 0");
+
+  //rtttl :: begin (BUZZER, melody_2);   // пиликаем при старте
 
 }
 
@@ -1182,9 +1178,10 @@ void fnPumpControl(void){
       }
       else                                                       // если ключ  не совпадает значит первый запуск
       {     
+            myNex.writeStr("p12t0.txt", "Writing defaults...");
             for(uint8_t i=0;i<3;i++ ){                            // мигнём три раза 
                   digitalWrite(BUILTIN_LED, HIGH);
-                  delay(1100);
+                  delay(1000);
                   digitalWrite(BUILTIN_LED, LOW);
                   delay(1000);
             }
