@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <avr/pgmspace.h>
+
 #include "defines.h"
 #include "init_functions.h"
 #include "variables.h"
@@ -11,7 +12,7 @@
 #include <DallasTemperature.h>
 #include "GyverHacks.h"
 #include <GyverFilters.h>
-#include <NonBlockingRtttl.h>  // библиотека пиликалки
+#include <NonBlockingRtttl.h>            // библиотека пиликалки
 #include <GyverTimers.h>
 #include <Arduino_FreeRTOS.h>
 
@@ -20,23 +21,22 @@
 #include <timers.h>
 
 
-#define PJON_INCLUDE_SWBB               // без этого не компилируется
+#define PJON_INCLUDE_SWBB               
 //#define PJON_INCLUDE_ASYNC_ACK true   //
 //#define TS_RESPONSE_TIME_OUT 0        //
 #include "PJON.h"
 PJON<SoftwareBitBang> bus(PJON_MY_ID );
 
 
-#define TEMPERATURE_PRECISION 9     // точность измерения температуры 9 бит
-OneWire oneWire(ONE_WIRE_PIN);      // порт шины 1WIRE
-DallasTemperature temp_sensors(&oneWire);  // привязка библиотеки DallasTemperature к библиотеке OneWire
-DeviceAddress thermometerID_1, thermometerID_2, thermometerID_3; // резервируем адреса для трёх датчиков
+#define TEMPERATURE_PRECISION 9                  // точность измерения температуры 9 бит
+OneWire oneWire(ONE_WIRE_PIN);                   // порт шины 1WIRE
+DallasTemperature temp_sensors(&oneWire);        // привязка библиотеки DallasTemperature к библиотеке OneWire
+DeviceAddress thermometerID_1, thermometerID_2, thermometerID_3;        // резервируем адреса для трёх датчиков
 
-GTimer timerSensorsUpdate; //таймер период обновления датчиков температуры
-GTimer timerPumpOffDelay;  //
+GTimer timerTempSensorsUpdate;      //таймер период обновления датчиков температуры
+GTimer timerPumpOffDelay;            //
 GTimer timerLowUConverterOffDelay;
 GTimer timerConverterShutdownDelay;
-GTimer timerPjonFloatFault;
 GTimer timerPjonTransmittPeriod;
 GTimer timerShutdownDelay;
 GTimer timerMenuDynamicUpdate;
@@ -68,7 +68,7 @@ void TaskModBusPool(void *pvParameters );
 void TaskOwScanner(void *pvParameters );
 
 #if(DEBUG_GENERAL) 
-void TaskSerial(void *pvParameters);
+void TaskDebugSerial(void *pvParameters);
 #endif
 
 TaskHandle_t TaskPilikalka_Handler;
@@ -174,12 +174,11 @@ void setup() {
   temp_sensors.setResolution(thermometerID_3, TEMPERATURE_PRECISION);
   temp_sensors.setWaitForConversion(false);
 
-  timerSensorsUpdate.setInterval(SENSORS_UPDATE_PERIOD); 
+  timerTempSensorsUpdate.setInterval(TEMP_SENSORS_UPDATE_PERIOD); 
   timerPumpOffDelay.setMode(MANUAL); 
   timerLowUConverterOffDelay.setMode(MANUAL);
-   timerLowUConverterOffDelay.setInterval(((uint32_t)setpoints_data.lowUconverter_off_delay) * MINUTE);
+  timerLowUConverterOffDelay.setInterval(((uint32_t)setpoints_data.lowUconverter_off_delay) * MINUTE);
   timerConverterShutdownDelay.setMode(MANUAL);
-  timerPjonFloatFault.setInterval(FLOAT_FAULT_TIME);
   timerPjonTransmittPeriod.setInterval(setpoints_data.pjon_transmitt_period * SECOND);
   timerShutdownDelay.setMode(MANUAL);
   timerShutdownDelay.setInterval(setpoints_data.shutdown_delay * HOUR);
@@ -281,7 +280,7 @@ void setup() {
 
 
       #if(DEBUG_GENERAL)
-            xTaskCreate(TaskSerial,
+            xTaskCreate(TaskDebugSerial,
                   "Serial",
                   128,
                   NULL, 
@@ -1079,7 +1078,7 @@ flag_value_changed = HIGH;
 void  trigger4 (){
 EEPROM.updateBlock(EEPROM_SETPOINTS_ADDRESS, setpoints_data);
 memcpy(&old_setpoints_data, &setpoints_data, sizeof(Setpoints));
-timerPjonTransmittPeriod.setInterval(setpoints_data.pjon_transmitt_period * SECOND); // обновление таймингов
+timerPjonTransmittPeriod.setInterval(setpoints_data.pjon_transmitt_period * SECOND); // обновление интервала
 flag_value_changed = LOW;
 }
 //**********************************************************************************
@@ -1561,7 +1560,7 @@ float fnVoltageRead(void){
  //****************************************************************************
 
  //
- void TaskTempSensorsUpdate( void *pvParameters __attribute__((unused)) )  // This is a Task.
+ void TaskTempSensorsUpdate( void *pvParameters __attribute__((unused)) )  
  {
       while (1)
       {
@@ -1579,7 +1578,7 @@ float fnVoltageRead(void){
  //***************************************************************
 
  //
- void TaskPjonTransmitter( void *pvParameters __attribute__((unused)) )  // This is a Task.
+ void TaskPjonTransmitter( void *pvParameters __attribute__((unused)) )  
  {
       while (1)
       {
@@ -1596,7 +1595,7 @@ float fnVoltageRead(void){
 //********************************************************************
 
 //
-void TaskVoltageMeasurement( void *pvParameters __attribute__((unused)) )  // This is a Task.
+void TaskVoltageMeasurement( void *pvParameters __attribute__((unused)) )  
  {
       while (1)
       {
@@ -1615,7 +1614,7 @@ bool fnSensorsPowerControl(void){
 //**********************************************************************
 
 //
-void TaskModBusPool( void *pvParameters __attribute__((unused)) )  // This is a Task.
+void TaskModBusPool( void *pvParameters __attribute__((unused)) )  
  {
       while (1)
       {
@@ -1633,7 +1632,7 @@ void TaskModBusPool( void *pvParameters __attribute__((unused)) )  // This is a 
 //********************************************************************
 
 
-void TaskOwScanner( void *pvParameters __attribute__((unused)) )  // This is a Task.
+void TaskOwScanner( void *pvParameters __attribute__((unused)) )  
 {
       while (1)
       {
@@ -1848,7 +1847,7 @@ bool fnMainPowerControl(void){
 
 //
 #if(DEBUG_GENERAL)
-  void TaskSerial(void *pvParameters)
+  void TaskDebugSerial(void *pvParameters)
       {
             (void) pvParameters;
 
@@ -1865,14 +1864,12 @@ bool fnMainPowerControl(void){
 
                   // Serial task status
                   Serial.print F("- TASK ");
-                  Serial.print(pcTaskGetName(NULL)); // Get task name without handler https://www.freertos.org/a00021.html#pcTaskGetName
+                  Serial.print(pcTaskGetName(NULL));              //
                   Serial.print F(", High Watermark: ");
-                  Serial.print(uxTaskGetStackHighWaterMark(NULL)); // https://www.freertos.org/uxTaskGetStackHighWaterMark.html 
-
-
-                  TaskHandle_t taskSerialHandler = xTaskGetCurrentTaskHandle(); // Get current task handle. https://www.freertos.org/a00021.html#xTaskGetCurrentTaskHandle
-            
+                  Serial.print(uxTaskGetStackHighWaterMark(NULL)); //  
+                  //TaskHandle_t taskDebugSerialHandler = xTaskGetCurrentTaskHandle(); // 
                   Serial.println();
+
                   //Pilikalka
                   Serial.print F("- TASK ");
                   Serial.print(pcTaskGetName(TaskPilikalka_Handler)); // Get task name with handler
@@ -1929,11 +1926,9 @@ bool fnMainPowerControl(void){
                   Serial.print(uxTaskGetStackHighWaterMark(TaskOwScanner_Handler));
                   Serial.println(); 
                   
-
                   Serial.println();
                   Serial.println();
                   
-
                   Serial.print F("timerPumpOffDelay:  ");
                   Serial.println(timerPumpOffDelay.currentTime() / 1000);
                   Serial.print F("timerLowUConverterOffDelay:  ");
@@ -1944,7 +1939,6 @@ bool fnMainPowerControl(void){
                   Serial.println(timerShutdownDelay.currentTime() / 1000);
                   Serial.print F("timerScreenOffDelay:  ");
                   Serial.println(timerScreenOffDelay.currentTime() / 1000);
-
 
                   Serial.print F("door_switch_state:  ");
                   Serial.print (main_data.door_switch_state);
@@ -1961,11 +1955,8 @@ bool fnMainPowerControl(void){
                   Serial.print F("pump_output_state:  ");
                   Serial.print (main_data.pump_output_state);
 
-
-
                   Serial.println();
                   Serial.println();
-
             
                   vTaskDelay( 5000 / portTICK_PERIOD_MS );
             }
