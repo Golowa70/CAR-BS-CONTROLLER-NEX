@@ -33,16 +33,17 @@
 #define BASESET_PAGE          11
 #define MAX_PAGES             20 
 
-#define CONNECTED          false
-#define DISCONNECTED        true
-
+//modes
 #define OFF_MODE               0
 #define ON_MODE                1
 #define AUTO_MODE              2
 
+
 //eeprom
 #define EEPROM_SETPOINTS_ADDRESS  0
-#define MAGIC_KEY                 0x123456//7 
+#define MAGIC_KEY                 0x123456//7   //ключь для определения записаны ли уставки в память EEPROM
+//#define MAGIC_KEY_PART_1          0x1234567   // вариант с двумя частями один в начале второй в конце
+//#define MAGIC_KEY_PART_2          0x7654321
 
 //communications
 #define PJON_BUS_PIN         3
@@ -69,8 +70,8 @@
 #define IGNITION_SWITCH_INPUT_3             56       //A2
 #define LOW_WASHER_WATER_LEVEL_INPUT_4      57       //A3
 #define SUPPLY_VOLTAGE_INPUT                A4       //A4
-#define WATER_FLOW_SENSOR                    5       //YF-S201 ПОКА НЕ ИСПОЛЬЗУЕТСЯ
-#define BUTTON_ON_BOARD                     10
+#define WATER_FLOW_SENSOR                    5       //YF-S201 (пока не используется)
+#define BUTTON_ON_BOARD                     10       // кнопка на плате (пока не используется)
 
 //outputs
 #define WATER_PUMP_OUTPUT_1      22  
@@ -94,9 +95,9 @@
 #define DIVISION_RATIO_VOLTAGE_INPUT  0.0208    // разрешение 0.0025  уможить на коэфициент резистивного делителя 8.2
 
 
-#define SECOND       1000           //ms
-#define MINUTE       60000          //ms
-#define HOUR         3600000        //ms
+#define SECOND       1000           //ms  секунда
+#define MINUTE       60000          //ms  минута
+#define HOUR         3600000        //ms  час
 
 
 #define INPUTS_UPDATE_PERIOD   100        //ms период обновления опроса входов
