@@ -1,61 +1,51 @@
 #ifndef VARIABLES_H
 #define VARIABLES_H
 
+bool flag_door_switch_old_state;     // предыдущее состояние двери
+bool proximity_sensor_old_state;     // предыдущее состояние датчика приближения
 
-//uint16_t analog_input_5_source;                 // значение АЦП на пине А6
-//uint16_t analog_input_6_source;                 // значение АЦП на пине А7
-
-uint16_t pj_fault_counter_1;
-uint16_t pj_fault_counter_2;
-
-bool flag_door_switch_old_state;                     // предыдущее состояние двери
-bool proximity_sensor_old_state;              // предыдущее состояние датчика приближения
-
-bool flag_ds18b20_update;                     // флаг обновлени чтения температуры с ds18b20 (пока не используется)
-
-bool flag_convOff_due_voltage;
-bool flag_convOff_due_ign_switch;
-
-//Pjon variables 
-/*
-struct PjonSend {                     // структура для отправки данных по протоколу PJON
-  
-  } data_send_to_main_controller;
-*/
-
-uint16_t send_to_ID ;               //   идентификатор устройства которому передаются данные
-uint16_t  receive_from_ID;              //   идентификатор устройства от которого пришли данные
-uint16_t  pjon_TX__float_sensor_response;             //  результат передачи PJON 
-uint16_t  pjon_TX__flow_sensor_response;             //  результат передачи PJON 
-uint16_t  pjon_RX_response;            //  результат приёма PJON 
-
-uint8_t pjon_sender_cnt; // счетчик для поочередной передачи нескольким адресатам, инкрементируется при передаче
-uint8_t pjon_float_sensor_fault_cnt;   // счетчик ошибки связи с датчиком уровня, добавляем при каждой передаче и сбрасываем при удачном приёме 
-uint8_t pjon_flow_sensor_fault_cnt;   // счетчик ошибки связи с датчиком протечки, добавляем при каждой передаче и сбрасываем при удачном приёме 
-bool flag_pjon_float_sensor_connected;
-bool flag_pjon_float_sensor_connected_old_state;
-bool flag_pjon_flow_sensor_connected;
-bool flag_pjon_flow_sensor_connected_old_state;
-
-//pjon receive from water level sensor & water flow sensor
-struct PjonReceive {                  // структура принятых данных от датчиков уровня воды по протоколу PJON
-uint8_t data;
-} pjon_wls_percent_receive,pjon_wfs_liter_receive;
+bool flag_convOff_due_voltage;      // флаг что конветер был выключен по напряжению
+bool flag_convOff_due_ign_switch;   // флаг что конветер был выключен по таймеру после выключения зажигания
 
 
+//*********** Pjon variables ******************************************************** 
+  uint16_t pj_float_sensor_fault_counter;  // счетчик запросов без ответа датчика уровня
+  uint16_t pj_flow_sensor_fault_counter;   // счетчик запросов без ответа датчика протечки
+  uint16_t receive_from_ID;              //   идентификатор устройства от которого пришли данные
+  uint16_t pjon_TX__float_sensor_response;             //  результат передачи PJON 
+  uint16_t pjon_TX__flow_sensor_response;             //  результат передачи PJON 
+  uint16_t pjon_RX_response;            //  результат приёма PJON 
+  uint8_t pjon_sender_cnt; // счетчик для поочередной передачи нескольким адресатам, инкрементируется при передаче
+  uint8_t pjon_float_sensor_fault_cnt;   // счетчик ошибки связи с датчиком уровня, добавляем при каждой передаче и сбрасываем при удачном приёме 
+  uint8_t pjon_flow_sensor_fault_cnt;   // счетчик ошибки связи с датчиком протечки, добавляем при каждой передаче и сбрасываем при удачном приёме 
+  uint8_t pjon_wls_percent_old;   // предыдущее значение уровня воды принятое от датчика уровня
+  uint8_t pjon_wls_liter_old;     // предыдущее значение количества воды принятое от датчика уровня
+  bool flag_pjon_float_sensor_connected;
+  bool flag_pjon_float_sensor_connected_old_state;
+  bool flag_pjon_flow_sensor_connected;
+  bool flag_pjon_flow_sensor_connected_old_state;
 
-//water level
-uint8_t pjon_wls_percent_old;   // предыдущее значение уровня воды принятое от датчика уровня
-uint8_t pjon_wls_liter_old;     // предыдущее значение количества воды принятое от датчика уровня
+ //pjon receive from water level sensor & water flow sensor
+  struct PjonReceive {                  // структура принятых данных от датчиков уровня воды по протоколу PJON
+    uint8_t data;
+  } pjon_wls_percent_receive,pjon_wfs_liter_receive;
 
-//buzzer
+  /*
+  struct PjonSend {                     // структура для отправки данных по протоколу PJON
+    
+    } data_send_to_main_controller;
+  */
 
-// light
-bool flag_timer_light_delay_off_started;    // флаг состояния таймера выключения света
+//*****************************************************************************************************
 
 
-// menu
-//------------Setpoints variables --------------------------------------
+//*********** LIGHT VARIABLES *************************************************************************
+  bool flag_timer_light_delay_off_started;   // флаг состояния таймера выключения света
+
+//*****************************************************************************************************
+
+
+//*********** Setpoints variables *********************************************************************
 
   struct Setpoints {                 // структура для уставок         
     uint32_t magic_key;        
@@ -63,7 +53,7 @@ bool flag_timer_light_delay_off_started;    // флаг состояния та�
     uint8_t flow_sensor_correction; // 127 - нолевая коррекция
     uint8_t water_tank_capacity;
     uint8_t water_level_liter;
-    uint8_t converter_off_delay;
+    uint8_t lowUconverter_off_delay;
     uint8_t converter_shutdown_delay;
     uint8_t converter_voltage_off; // дробное со смещённой вправо точкой 12.7в = 127,  13.2в =132 и т.д.
     uint8_t converter_voltage_on;
@@ -89,10 +79,10 @@ bool flag_timer_light_delay_off_started;    // флаг состояния та�
     uint8_t sensors_select_array[MAX_TEMP_SENSORS ]; // inside, outside, spare
   } setpoints_data, default_setpoints_data, old_setpoints_data;
 
+//********** end setpoints variables ******************************************************************
 
-//--------- end setpoints variables ---------------------------------------
 
-//-- Main data --------------------------------------------------------
+//*********** Main data *******************************************************************************
   struct MyData {
     float battery_voltage;        // напряжени бортсети ( например 124 это 12.4в)
     float outside_temperature;     //  наружная температура
@@ -114,12 +104,24 @@ bool flag_timer_light_delay_off_started;    // флаг состояния та�
     uint16_t mb_rates [6]={4800, 7200, 9600, 19200, 38400, 57600};
   } main_data;
 
-//----- end main data --------------------------------
+//****** end main data **************************************************************
 
-//********** MENU VARIABLES ***********************************
+//********** MENU VARIABLES *********************************************************
+  uint8_t current_page = MAX_PAGES;
+  uint8_t current_item;
+  uint8_t *variable_value = NULL;
+  bool flag_value_changed;
+  uint8_t var_min_value;
+  uint8_t var_max_value;
+  String tempString = "";
+  String tempString2;
 
+//********** ONE WIRE VARIABLES *****************************************************
+  bool flag_ow_scanned;
+  bool flag_ow_scan_to_start; 
+  bool flag_ds18b20_update;    // флаг обновлени чтения температуры с ds18b20
 
-//*************************************************************
+//***********************************************************************************
 
 
 #endif
