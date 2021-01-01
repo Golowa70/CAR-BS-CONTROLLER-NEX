@@ -91,7 +91,7 @@
 #define PJON_WATER_FLOW_SENSOR_ID     4
 #define PJON_MAX_NODES                2 // пока два
 
-#define VERSION "ver 0.2"
+#define VERSION "ver 1.0"
 #define DIVISION_RATIO_VOLTAGE_INPUT  0.0208    // разрешение 0.0025  уможить на коэфициент резистивного делителя 8.2
 
 /*
