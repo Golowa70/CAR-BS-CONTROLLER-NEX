@@ -9,31 +9,34 @@
 void fnIOInit(void) {
 
     //inputs declaration
-    pinMode(DOOR_SWITCH_INPUT_1, INPUT_PULLUP);
-    pinMode(PROXIMITY_SENSOR_INPUT_2, INPUT_PULLUP);
-    pinMode(IGNITION_SWITCH_INPUT_3, INPUT);
-    pinMode(LOW_WASHER_WATER_LEVEL_INPUT_4, INPUT_PULLUP);//
-    pinMode(WATER_FLOW_SENSOR, INPUT_PULLUP);//
-    pinMode(BUTTON_ON_BOARD, INPUT_PULLUP);//
+        pinMode(DOOR_SWITCH_INPUT_1, INPUT_PULLUP);
+        pinMode(PROXIMITY_SENSOR_INPUT_2, INPUT_PULLUP);
+        pinMode(IGNITION_SWITCH_INPUT_3, INPUT);
+        pinMode(LOW_WASHER_WATER_LEVEL_INPUT_4, INPUT_PULLUP);//
+        pinMode(WATER_FLOW_SENSOR, INPUT_PULLUP);//
+        pinMode(BUTTON_ON_BOARD, INPUT_PULLUP);//
+
+        analogReference(INTERNAL2V56);          // внутренний исочник опорного напряжения 2.56в
 
     //outputs declaration
-    pinMode(WATER_PUMP_OUTPUT_1, OUTPUT);
-    pinMode(LIGHT_OUTPUT_2, OUTPUT);
-    pinMode(CONVERTER_OUTPUT_3, OUTPUT);
-    pinMode(SENSORS_SUPPLY_5v, OUTPUT);
-    pinMode(MAIN_SUPPLY_OUT, OUTPUT);
-    pinMode(BUZZER , OUTPUT);
-    pinMode(BUILTIN_LED, OUTPUT); 
-    pinMode(WDT_RESET_OUT, OUTPUT); 
+        pinMode(WATER_PUMP_OUTPUT_1, OUTPUT);
+        pinMode(LIGHT_OUTPUT_2, OUTPUT);
+        pinMode(CONVERTER_OUTPUT_3, OUTPUT);
+        pinMode(SENSORS_SUPPLY_5v, OUTPUT);
+        pinMode(MAIN_SUPPLY_OUT, OUTPUT);
+        pinMode(BUZZER , OUTPUT);
+        pinMode(BUILTIN_LED, OUTPUT); 
+        pinMode(WDT_RESET_OUT, OUTPUT); 
 
-    digitalWrite(WATER_PUMP_OUTPUT_1, LOW);
-    digitalWrite(LIGHT_OUTPUT_2, LOW);
-    digitalWrite(CONVERTER_OUTPUT_3, LOW);
-    digitalWrite(SENSORS_SUPPLY_5v, LOW);
-    digitalWrite(MAIN_SUPPLY_OUT, LOW);
-    digitalWrite(BUZZER, LOW);
-    digitalWrite(BUILTIN_LED, LOW);
-    digitalWrite(WDT_RESET_OUT, LOW);
+    //outputs start state
+        digitalWrite(WATER_PUMP_OUTPUT_1, LOW);
+        digitalWrite(LIGHT_OUTPUT_2, LOW);
+        digitalWrite(CONVERTER_OUTPUT_3, LOW);
+        digitalWrite(SENSORS_SUPPLY_5v, LOW);
+        digitalWrite(MAIN_SUPPLY_OUT, LOW);
+        digitalWrite(BUZZER, LOW);
+        digitalWrite(BUILTIN_LED, LOW);
+        digitalWrite(WDT_RESET_OUT, LOW);
 }
 
 
