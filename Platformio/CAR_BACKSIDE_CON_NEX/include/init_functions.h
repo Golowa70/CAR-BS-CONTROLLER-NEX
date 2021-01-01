@@ -45,7 +45,7 @@ void fnDefaultSetpointsInit(void){
     setpoints_data.flow_sensor_correction = 0;
     setpoints_data.water_tank_capacity = 35; // литр
     setpoints_data.water_level_liter = 0;
-    setpoints_data.converter_off_delay = 3; // min
+    setpoints_data.lowUconverter_off_delay = 3; // min
     setpoints_data.converter_shutdown_delay = 5; // min
     setpoints_data.converter_voltage_off = 115; // 11.5 вольт
     setpoints_data.converter_voltage_on = 130; //13 вольт
