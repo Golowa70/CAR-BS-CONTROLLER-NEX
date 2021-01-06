@@ -142,7 +142,7 @@ void setup() {
   if(fnEEpromInit()){
       myNex.writeStr("p12t0.txt", "Ok!");
 
-       memcpy(&old_setpoints_data, &setpoints_data, sizeof(Setpoints)); // копирование структур с настройками для отслеживания изменений уставок
+      memcpy(&old_setpoints_data, &setpoints_data, sizeof(Setpoints)); // копирование структур с настройками для отслеживания изменений уставок
   
       // копирование адресов датчиков из структуры уставок которая сохранена в EEPROM
       memcpy(&thermometerID_1, &setpoints_data.sensors_ID_array[setpoints_data.sensors_select_array[INSIDE_SENSOR-1]-1] [0], sizeof(thermometerID_1)); //    
@@ -188,7 +188,7 @@ void setup() {
   fnMenuStaticDataUpdate();
 
   bus.strategy.set_pin(PJON_BUS_PIN);   // выбор пина дя передачи данных
-  bus.set_id(setpoints_data.pjon_ID);               //  установка собственного ID
+  bus.set_id(setpoints_data.pjon_ID);   //  установка собственного ID
   bus.begin();  //   
   bus.set_receiver(pj_receiver_function);
 
@@ -199,6 +199,7 @@ void setup() {
   //ModbusRTUServer.configureHoldingRegisters(0x00, 5); 
 
   pjon_float_sensor_fault_cnt = setpoints_data.pjon_float_fault_timer; //
+  pjon_flow_sensor_fault_cnt = setpoints_data.pjon_float_fault_timer;
   
   timerConverterShutdownDelay.setInterval((setpoints_data.converter_shutdown_delay) * MINUTE);
 
@@ -980,7 +981,6 @@ void fnMenuDynamicDataUpdate(void){
                                           var_max_value = 1; 
                                     break;
 
-                                    // ПОКА НЕ ИСПОЛЬЗУЕТСЯ
                                     case 2:
                                           myNex.writeNum(F("p11t1.pco"), WHITE);
                                           myNex.writeNum(F("p11t2.pco"), BLUE);
@@ -1291,7 +1291,7 @@ float fnVoltageRead(void){
   
   if(receive_from_ID == PJON_WATER_LEVEL_SENSOR_ID){  // если данные пришли от датчика уровня ...
       memcpy(&pjon_wls_percent_receive, payload, sizeof(pjon_wls_percent_receive)); //... копируем данные в соответствующую структуру
-      pjon_float_sensor_fault_cnt = 0;  // if(pjon_float_sensor_fault_cnt > 0)pjon_float_sensor_fault_cnt--; // так не работает почемуто
+      pjon_float_sensor_fault_cnt = 0;  // 
    }
 
    if(receive_from_ID == PJON_WATER_FLOW_SENSOR_ID){  // если данные пришли от датчика протечки ...
