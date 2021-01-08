@@ -100,8 +100,9 @@
 #define HOUR         3600000        //ms  час
 
 
-#define INPUTS_UPDATE_PERIOD   100        //ms период обновления опроса входов
+#define INPUTS_UPDATE_PERIOD   50        //ms период обновления опроса входов
 #define START_DELAY            3000       //ms задержка опроса входов после подачи питания (пока датчики запустятся)
 #define PRX_SENSOR_FEEDBACK_DELAY   500   //ms задержка реакции датчика приближения (для стабильности)
+#define WDT_RESET_PERIOD        500000  // us период сброса ADM705 < 1.6 sec
 
 #endif
