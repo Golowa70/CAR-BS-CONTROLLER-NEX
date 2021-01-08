@@ -96,6 +96,7 @@ void fnPjonSender(void);
 void fnWaterLevelControl(void);
 bool fnSensorsPowerControl(void);
 bool fnMainPowerControl(void);
+uint8_t fnDebounce(uint8_t sample);
 
 
 //обработчик прерывания от Timer3 (сброс внешнего WDT)
@@ -108,7 +109,7 @@ bool fnMainPowerControl(void);
 
 void setup() {
 
-  Timer3.setPeriod(500000);     // Устанавливаем период таймера 500000 мкс -> 0.5 гц (сброс внешнего WDT)
+  Timer3.setPeriod(WDT_RESET_PERIOD);     // Устанавливаем период таймера 500000 мкс -> 0.5 гц (сброс внешнего WDT)
   Timer3.enableISR(CHANNEL_A);
 
   fnIOInit();
@@ -1148,11 +1149,32 @@ void fnPumpControl(void){
 //Inputs Update 
    void fnInputsUpdate(void) {                  // функция обновления состояния входов (раз в   мсек)
 
+      if( !digitalRead(DOOR_SWITCH_INPUT_1)) inputs_undebounced_sample |= (1<<0);
+      else inputs_undebounced_sample &= ~(1<<0);
+
+      if(!digitalRead(PROXIMITY_SENSOR_INPUT_2)) inputs_undebounced_sample |= (1<<1);
+      else inputs_undebounced_sample &= ~(1<<1);
+
+      if(digitalRead(IGNITION_SWITCH_INPUT_3))inputs_undebounced_sample |= (1<<2);
+      else inputs_undebounced_sample &= ~(1<<2);
+
+      if(!digitalRead(LOW_WASHER_WATER_LEVEL_INPUT_4))inputs_undebounced_sample |= (1<<3);
+      else inputs_undebounced_sample &= ~(1<<3);
+
+      inputs_debounced_state = fnDebounce(inputs_undebounced_sample);
+
+      main_data.door_switch_state = (inputs_debounced_state & (1<<0));
+      main_data.proximity_sensor_state = (inputs_debounced_state & (1<<1));
+      main_data.ignition_switch_state = (inputs_debounced_state & (1<<2));
+      main_data.low_washer_water_level = (inputs_debounced_state & (1<<3));
+
+ /*
       main_data.door_switch_state = !digitalRead(DOOR_SWITCH_INPUT_1);           
       main_data.proximity_sensor_state = !digitalRead(PROXIMITY_SENSOR_INPUT_2);
       main_data.ignition_switch_state = digitalRead(IGNITION_SWITCH_INPUT_3);
       main_data.low_washer_water_level = !digitalRead(LOW_WASHER_WATER_LEVEL_INPUT_4);
-      
+ */
+
    }
 //*******************************************************************************
 
@@ -1842,7 +1864,7 @@ bool fnMainPowerControl(void){
 }
 //**********************************************************************
 
-//
+// DEBUG 
 #if(DEBUG_GENERAL)
   void TaskDebugSerial(void *pvParameters)
       {
@@ -1937,20 +1959,30 @@ bool fnMainPowerControl(void){
                   Serial.print F("timerScreenOffDelay:  ");
                   Serial.println(timerScreenOffDelay.currentTime() / 1000);
 
+                  Serial.println();
+
                   Serial.print F("door_switch_state:  ");
-                  Serial.print (main_data.door_switch_state);
+                  Serial.println (main_data.door_switch_state);
                   Serial.print F("ignition_switch_state:  ");
-                  Serial.print (main_data.ignition_switch_state);
+                  Serial.println (main_data.ignition_switch_state);
                   Serial.print F("proximity_sensor_state:  ");
-                  Serial.print (main_data.proximity_sensor_state);
-                  Serial.print F("proximity_sensor_state:  ");
+                  Serial.println (main_data.proximity_sensor_state);
+
+                  Serial.println();
 
                   Serial.print F("converter_output_state:  ");
-                  Serial.print (main_data.converter_output_state);
+                  Serial.println (main_data.converter_output_state);
                   Serial.print F("light_output_state:  ");
-                  Serial.print (main_data.light_output_state);
+                  Serial.println (main_data.light_output_state);
                   Serial.print F("pump_output_state:  ");
-                  Serial.print (main_data.pump_output_state);
+                  Serial.println (main_data.pump_output_state);
+
+                  Serial.println();
+
+                  Serial.print F("pj_float_sensor_fault_counter:  ");
+                  Serial.println (pj_float_sensor_fault_counter);
+                  Serial.print F("pj_flow_sensor_fault_counter:  ");
+                  Serial.println (pj_flow_sensor_fault_counter);
 
                   Serial.println();
                   Serial.println();
@@ -1958,4 +1990,25 @@ bool fnMainPowerControl(void){
                   vTaskDelay( 5000 / portTICK_PERIOD_MS );
             }
       }
-#endif      
+#endif    
+//*************************************************************************
+
+// Debounce 
+      uint8_t fnDebounce(uint8_t sample){        // антидребезг на основе вертикального счетчика
+
+            static uint8_t state, cnt0, cnt1;
+            uint8_t delta, toggle;
+
+            delta = sample ^ state;
+            cnt1 = cnt1 ^ cnt0;
+            cnt0 = ~cnt0;
+
+            cnt0 &= delta;
+            cnt1 &= delta;
+
+            toggle = cnt0 & cnt1;
+            state ^= toggle;
+            return state;
+
+      }
+//*************************************************************************
