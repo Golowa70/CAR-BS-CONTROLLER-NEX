@@ -126,6 +126,9 @@
 
   bool flag_convOff_due_voltage;      // флаг что конветер был выключен по напряжению
   bool flag_convOff_due_ign_switch;   // флаг что конветер был выключен по таймеру после выключения зажигания
+
+  uint8_t inputs_undebounced_sample = 0;
+  uint8_t inputs_debounced_state = 0;
 //***********************************************************************************
 
 
