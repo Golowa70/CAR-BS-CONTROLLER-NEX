@@ -121,12 +121,14 @@ void setup() {
   #endif
 
 
-  //меняем скорость Nextion 
-      //Serial1.begin(19200); // нынешняя скорость
-      //Serial1.print("bauds=115200"); // новая скорость
-      //Serial1.write(0xff);
-      //Serial1.write(0xff);
-      //Serial1.write(0xff); 
+  //меняем скорость Nextion (одноразово)
+    /*
+      Serial1.begin(9600); // нынешняя скорость по умолчанию
+      Serial1.print("bauds=115200"); // новая скорость
+      Serial1.write(0xff);
+      Serial1.write(0xff);
+      Serial1.write(0xff); 
+    */  
 
   delay(2000);                       //задержка
   myNex.begin(NEXTION_BAUD_RATE);   // 
