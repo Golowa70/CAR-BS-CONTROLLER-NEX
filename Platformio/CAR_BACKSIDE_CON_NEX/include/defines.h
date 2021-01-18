@@ -75,7 +75,7 @@
 //#define ENCODER_SW							35
 //#define ENCODER_DT							36
 //#define ENCODER_CLK							37
-//#define SENSORS_VOLTAGE_TEST_INPUT			A5
+//#define SENSORS_VOLTAGE_TEST_INPUT			A5  // пока не используется
 
 //outputs
 #define WATER_PUMP_OUTPUT_1      22  
