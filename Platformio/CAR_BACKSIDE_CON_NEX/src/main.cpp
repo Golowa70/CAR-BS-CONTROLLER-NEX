@@ -123,7 +123,7 @@ void setup() {
 
   //меняем скорость Nextion (одноразово)
     /*
-      Serial1.begin(9600); // нынешняя скорость по умолчанию
+      Serial1.begin(9600); // нынешняя скорость / по умолчанию
       Serial1.print("bauds=115200"); // новая скорость
       Serial1.write(0xff);
       Serial1.write(0xff);
@@ -196,10 +196,10 @@ void setup() {
   bus.set_receiver(pj_receiver_function);
 
   ModbusRTUServer.begin(2, main_data.mb_rates[setpoints_data.mb_baud_rate]); // настройка порта в файле RS485.cpp в конце
-  ModbusRTUServer.configureDiscreteInputs(0x00, 10);
-  ModbusRTUServer.configureInputRegisters(0x00, 10);  
-  //ModbusRTUServer.configureCoils(0x00, 10);
-  //ModbusRTUServer.configureHoldingRegisters(0x00, 5); 
+  // ModbusRTUServer.configureDiscreteInputs(0x00, 10);
+  // ModbusRTUServer.configureInputRegisters(0x00, 10);  
+  ModbusRTUServer.configureCoils(0x00, 10);
+  ModbusRTUServer.configureHoldingRegisters(0x00, 10); 
 
   pjon_float_sensor_fault_cnt = setpoints_data.pjon_float_fault_timer; //
   pjon_flow_sensor_fault_cnt = setpoints_data.pjon_float_fault_timer;
@@ -1435,25 +1435,25 @@ float fnVoltageRead(void){
             myNex. NextionListen ();
 
             // ********* ModBus registers update ******************************
-            ModbusRTUServer.discreteInputWrite(0x00, main_data.ignition_switch_state);
-            ModbusRTUServer.discreteInputWrite(0x01, main_data.door_switch_state);
-            ModbusRTUServer.discreteInputWrite(0x02, main_data.proximity_sensor_state);
-            ModbusRTUServer.discreteInputWrite(0x03, main_data.pump_output_state);
-            ModbusRTUServer.discreteInputWrite(0x04, main_data.converter_output_state);
-            ModbusRTUServer.discreteInputWrite(0x05, main_data.light_output_state);
-            ModbusRTUServer.discreteInputWrite(0x06, flag_pjon_float_sensor_connected);
-            ModbusRTUServer.discreteInputWrite(0x07, flag_pjon_flow_sensor_connected);
-            ModbusRTUServer.discreteInputWrite(0x08, main_data.sensors_supply_output_state);
-            ModbusRTUServer.discreteInputWrite(0x09, main_data.low_washer_water_level); //
+            ModbusRTUServer.coilWrite(0x00, main_data.ignition_switch_state);
+            ModbusRTUServer.coilWrite(0x01, main_data.door_switch_state);
+            ModbusRTUServer.coilWrite(0x02, main_data.proximity_sensor_state);
+            ModbusRTUServer.coilWrite(0x03, main_data.pump_output_state);
+            ModbusRTUServer.coilWrite(0x04, main_data.converter_output_state);
+            ModbusRTUServer.coilWrite(0x05, main_data.light_output_state);
+            ModbusRTUServer.coilWrite(0x06, flag_pjon_float_sensor_connected);
+            ModbusRTUServer.coilWrite(0x07, flag_pjon_flow_sensor_connected);
+            ModbusRTUServer.coilWrite(0x08, main_data.sensors_supply_output_state);
+            ModbusRTUServer.coilWrite(0x09, main_data.low_washer_water_level); //
              
-            ModbusRTUServer.inputRegisterWrite(0x00, main_data.battery_voltage * 10);
-            ModbusRTUServer.inputRegisterWrite(0x01, main_data.inside_temperature * 10);
-            ModbusRTUServer.inputRegisterWrite(0x02, main_data.outside_temperature * 10);
-            ModbusRTUServer.inputRegisterWrite(0x03, main_data.water_level_percent);
-            ModbusRTUServer.inputRegisterWrite(0x04, main_data.water_level_liter);
+            ModbusRTUServer.holdingRegisterWrite(0x00, main_data.battery_voltage * 10);
+            ModbusRTUServer.holdingRegisterWrite(0x01, main_data.inside_temperature * 10);
+            ModbusRTUServer.holdingRegisterWrite(0x02, main_data.outside_temperature * 10);
+            ModbusRTUServer.holdingRegisterWrite(0x03, main_data.water_level_percent);
+            ModbusRTUServer.holdingRegisterWrite(0x04, main_data.water_level_liter);
 
-            ModbusRTUServer.inputRegisterWrite(0x05, pj_float_sensor_fault_counter);
-            ModbusRTUServer.inputRegisterWrite(0x06, pj_flow_sensor_fault_counter);
+            ModbusRTUServer.holdingRegisterWrite(0x05, pj_float_sensor_fault_counter);
+            ModbusRTUServer.holdingRegisterWrite(0x06, pj_flow_sensor_fault_counter);
 
 
             if(timerInputsUpdate.isReady() && timerStartDelay.isReady()) fnInputsUpdate();
