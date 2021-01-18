@@ -284,8 +284,7 @@ void setup() {
       #endif
 
   myNex.writeStr("page 0");
-  myNex.writeStr("page 0");
-
+ 
   //rtttl :: begin (BUZZER, melody_2);   // пиликаем при старте
 
 }
