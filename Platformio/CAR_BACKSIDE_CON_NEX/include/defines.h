@@ -46,7 +46,7 @@
 //#define MAGIC_KEY_PART_2          0x7654321
 
 //communications
-#define PJON_BUS_PIN         3
+#define PJON_BUS_PIN         3   // new 
 #define ONE_WIRE_PIN         4
 #define DE_RS485_PIN         6
 
@@ -72,6 +72,10 @@
 #define SUPPLY_VOLTAGE_INPUT                A4       //A4
 #define WATER_FLOW_SENSOR                    5       //YF-S201 (пока не используется)
 #define BUTTON_ON_BOARD                     10       // кнопка на плате (пока не используется)
+//#define ENCODER_SW							35
+//#define ENCODER_DT							36
+//#define ENCODER_CLK							37
+//#define SENSORS_VOLTAGE_TEST_INPUT			A5
 
 //outputs
 #define WATER_PUMP_OUTPUT_1      22  
