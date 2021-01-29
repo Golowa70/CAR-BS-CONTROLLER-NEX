@@ -1,9 +1,11 @@
 #include <Arduino.h>
 #include <avr/pgmspace.h>
+
 #include "defines.h"
 #include "init_functions.h"
 #include "variables.h"
 
+//libs
 #include "EasyNextionLibrary.h"
 #include <EEPROMex.h>
 #include <EEPROMVar.h>
@@ -11,32 +13,30 @@
 #include <DallasTemperature.h>
 #include "GyverHacks.h"
 #include <GyverFilters.h>
-#include <NonBlockingRtttl.h>  // библиотека пиликалки
+#include <NonBlockingRtttl.h>            // библиотека пиликалки
 #include <GyverTimers.h>
 #include <Arduino_FreeRTOS.h>
-
 #include <ArduinoRS485.h> 
 #include <ArduinoModbus.h>
 #include <timers.h>
 
 
-#define PJON_INCLUDE_SWBB               // без этого не компилируется
+#define PJON_INCLUDE_SWBB               
 //#define PJON_INCLUDE_ASYNC_ACK true   //
 //#define TS_RESPONSE_TIME_OUT 0        //
 #include "PJON.h"
 PJON<SoftwareBitBang> bus(PJON_MY_ID );
 
 
-#define TEMPERATURE_PRECISION 9     // точность измерения температуры 9 бит
-OneWire oneWire(ONE_WIRE_PIN);      // порт шины 1WIRE
-DallasTemperature temp_sensors(&oneWire);  // привязка библиотеки DallasTemperature к библиотеке OneWire
-DeviceAddress thermometerID_1, thermometerID_2, thermometerID_3; // резервируем адреса для трёх датчиков
+#define TEMPERATURE_PRECISION 9                  // точность измерения температуры 9 бит
+OneWire oneWire(ONE_WIRE_PIN);                   // порт шины 1WIRE
+DallasTemperature temp_sensors(&oneWire);        // привязка библиотеки DallasTemperature к библиотеке OneWire
+DeviceAddress thermometerID_1, thermometerID_2, thermometerID_3;        // резервируем адреса для трёх датчиков
 
-GTimer timerSensorsUpdate; //таймер период обновления датчиков температуры
-GTimer timerPumpOffDelay;  //
-GTimer timerConverterOffDelay;
+GTimer timerTempSensorsUpdate;      //таймер период обновления датчиков температуры
+GTimer timerPumpOffDelay;            //
+GTimer timerLowUConverterOffDelay;
 GTimer timerConverterShutdownDelay;
-GTimer timerPjonFloatFault;
 GTimer timerPjonTransmittPeriod;
 GTimer timerShutdownDelay;
 GTimer timerMenuDynamicUpdate;
@@ -49,23 +49,7 @@ GFilterRA voltage_filter;
 
 EasyNex myNex(Serial1);
 
-//variables
-uint8_t current_page = MAX_PAGES;
-uint8_t cnt;
-uint8_t current_item;
-uint8_t *variable_value = NULL;
-bool flag_value_changed;
-uint8_t var_min_value;
-uint8_t var_max_value;
-uint8_t pump_timer_current_time;
-bool flag_ow_scanned;
-bool flag_ow_scan_to_start;
-String tempString = "";
-String tempString2;
-uint32_t old_time;
-bool flag_sensors_update;
-
-
+//мелодии
 const  char  * bip_1 = " Connect:d=4,o=6,b=2000:4g5,1p,2g";
 const  char  * bip_2 = " Disconnect:d=4,o=6,b=2000:4g,1p,2g5";
 const  char  * melody_1 = " melody1:d=4,o=7,b=1000:4c,4d,4e,4f,4g,4a,4h";
@@ -73,6 +57,7 @@ const  char  * melody_2 = " melody2:d=4,o=7,b=500:4c,4d,4e,4f,4g,4a,4h";
 const  char  * melody_3 = " melody3:d=4,o=7,b=50:e";
 const  char  * melody_4 = " melody4:d=4,o=5,b=160:1p,e6,8p,e6,8p,e6,8p";
 
+// FreeRTOS functions
 void TaskPilikalka( void *pvParameters );
 void TaskLoop( void *pvParameters );
 void TaskMenuUpdate( void *pvParameters );
@@ -83,8 +68,9 @@ void TaskModBusPool(void *pvParameters );
 void TaskOwScanner(void *pvParameters );
 
 #if(DEBUG_GENERAL) 
-void TaskSerial(void *pvParameters);
+void TaskDebugSerial(void *pvParameters);
 #endif
+
 
 TaskHandle_t TaskPilikalka_Handler;
 TaskHandle_t TaskLoop_Handler;
@@ -94,7 +80,6 @@ TaskHandle_t TaskPjonTransmitt_Handler;
 TaskHandle_t TaskVoltageMeasurement_Handler;
 TaskHandle_t TaskModBusPool_Handler;
 TaskHandle_t TaskOwScanner_Handler;
-
 
 
 //functions
@@ -111,22 +96,21 @@ void fnPjonSender(void);
 void fnWaterLevelControl(void);
 bool fnSensorsPowerControl(void);
 bool fnMainPowerControl(void);
+uint8_t fnDebounce(uint8_t sample);
 
- #if(DEBUG_GENERAL)
-    //  char ptrTaskList[250];
- #endif
 
-//обработчик прерывания от Timer3
-ISR(TIMER3_A) {
-      main_data.wdt_reset_output_state = 1 - main_data.wdt_reset_output_state;
-      digitalWrite(WDT_RESET_OUT, main_data.wdt_reset_output_state);
+//обработчик прерывания от Timer3 (сброс внешнего WDT)
+      ISR(TIMER3_A) {
+            main_data.wdt_reset_output_state = 1 - main_data.wdt_reset_output_state;
+            digitalWrite(WDT_RESET_OUT, main_data.wdt_reset_output_state);
+      }
 
-     // ModbusRTUServer.poll();
-}
-
-//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+//>>>>>>>>>>>>> SETUP >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 void setup() {
+
+  Timer3.setPeriod(WDT_RESET_PERIOD);     // Устанавливаем период таймера 500000 мкс -> 0.5 гц (сброс внешнего WDT)
+  Timer3.enableISR(CHANNEL_A);
 
   fnIOInit();
 
@@ -136,17 +120,18 @@ void setup() {
       Serial.begin(115200);
   #endif
 
-  Timer3.setPeriod(500000);     // Устанавливаем период таймера 500000 мкс -> 0.5 гц
-  Timer3.enableISR(CHANNEL_A);
 
-  //меняем скорость Nextion 
-  //Serial1.begin(19200); // нынешняя скорость
-  //Serial1.print("bauds=115200"); // новая скорость
-  //Serial1.write(0xff);
-  //Serial1.write(0xff);
-  //Serial1.write(0xff); 
-  delay(2000);            //задержка
-  myNex.begin(NEXTION_BAUD_RATE); // 
+  //меняем скорость Nextion (одноразово)
+    /*
+      Serial1.begin(9600); // нынешняя скорость / по умолчанию
+      Serial1.print("bauds=115200"); // новая скорость
+      Serial1.write(0xff);
+      Serial1.write(0xff);
+      Serial1.write(0xff); 
+    */  
+
+  delay(2000);                       //задержка
+  myNex.begin(NEXTION_BAUD_RATE);   // 
   myNex.writeStr("page 12");
   myNex.writeStr("page 12");
   myNex.writeStr("sleep=0");
@@ -155,23 +140,18 @@ void setup() {
  //myNex.writeStr("sleep=1");
  //delay(5000);
  //myNex.writeStr("sleep=0");
- // Serial.begin(9600);
-
- analogReference(INTERNAL2V56);          // внутренний исочник опорного напряжения 2.56в
- voltage_filter.setCoef(0.1);           // установка коэффициента фильтрации (0.0... 1.0). Чем меньше, тем плавнее фильтр
- voltage_filter.setStep(10);            // установка шага фильтрации (мс). Чем меньше, тем резче фильтр
+ 
 
   if(fnEEpromInit()){
       myNex.writeStr("p12t0.txt", "Ok!");
 
-       memcpy(&old_setpoints_data, &setpoints_data, sizeof(Setpoints)); // копирование структур с настройками для отслеживания изменений уставок
+      memcpy(&old_setpoints_data, &setpoints_data, sizeof(Setpoints)); // копирование структур с настройками для отслеживания изменений уставок
   
       // копирование адресов датчиков из структуры уставок которая сохранена в EEPROM
       memcpy(&thermometerID_1, &setpoints_data.sensors_ID_array[setpoints_data.sensors_select_array[INSIDE_SENSOR-1]-1] [0], sizeof(thermometerID_1)); //    
       memcpy(&thermometerID_2, &setpoints_data.sensors_ID_array[setpoints_data.sensors_select_array[OUTSIDE_SENSOR-1]-1] [0], sizeof(thermometerID_2)); //  
       memcpy(&thermometerID_3, &setpoints_data.sensors_ID_array[setpoints_data.sensors_select_array[SPARE_SENSOR-1]-1] [0], sizeof(thermometerID_3)); //  
  
-      delay(1000);
    }
    else
    {
@@ -180,21 +160,22 @@ void setup() {
    }
    
 
-  delay(500);
-  myNex.writeStr("page 0");
-  
+  delay(1500);
+
+  voltage_filter.setCoef(0.1);           // установка коэффициента фильтрации (0.0... 1.0). Чем меньше, тем плавнее фильтр
+  voltage_filter.setStep(10);            // установка шага фильтрации (мс). Чем меньше, тем резче фильтр
+
   temp_sensors.begin();
   temp_sensors.setResolution(thermometerID_1, TEMPERATURE_PRECISION); 
   temp_sensors.setResolution(thermometerID_2, TEMPERATURE_PRECISION);
   temp_sensors.setResolution(thermometerID_3, TEMPERATURE_PRECISION);
   temp_sensors.setWaitForConversion(false);
 
-  timerSensorsUpdate.setInterval(SENSORS_UPDATE_PERIOD); 
+  timerTempSensorsUpdate.setInterval(TEMP_SENSORS_UPDATE_PERIOD); 
   timerPumpOffDelay.setMode(MANUAL); 
-  timerConverterOffDelay.setMode(MANUAL);
-   timerConverterOffDelay.setInterval(((uint32_t)setpoints_data.converter_off_delay) * MINUTE);
+  timerLowUConverterOffDelay.setMode(MANUAL);
+  timerLowUConverterOffDelay.setInterval(((uint32_t)setpoints_data.lowUconverter_off_delay) * MINUTE);
   timerConverterShutdownDelay.setMode(MANUAL);
-  timerPjonFloatFault.setInterval(FLOAT_FAULT_TIME);
   timerPjonTransmittPeriod.setInterval(setpoints_data.pjon_transmitt_period * SECOND);
   timerShutdownDelay.setMode(MANUAL);
   timerShutdownDelay.setInterval(setpoints_data.shutdown_delay * HOUR);
@@ -210,27 +191,91 @@ void setup() {
   fnMenuStaticDataUpdate();
 
   bus.strategy.set_pin(PJON_BUS_PIN);   // выбор пина дя передачи данных
-  bus.set_id(setpoints_data.pjon_ID);               //  установка собственного ID
+  bus.set_id(setpoints_data.pjon_ID);   //  установка собственного ID
   bus.begin();  //   
   bus.set_receiver(pj_receiver_function);
 
   ModbusRTUServer.begin(2, main_data.mb_rates[setpoints_data.mb_baud_rate]); // настройка порта в файле RS485.cpp в конце
-  ModbusRTUServer.configureDiscreteInputs(0x00, 10);
-  ModbusRTUServer.configureInputRegisters(0x00, 10);  
-  //ModbusRTUServer.configureCoils(0x00, 10);
-  //ModbusRTUServer.configureHoldingRegisters(0x00, 5); 
+  // ModbusRTUServer.configureDiscreteInputs(0x00, 10);
+  // ModbusRTUServer.configureInputRegisters(0x00, 10);  
+  ModbusRTUServer.configureCoils(0x00, 10);
+  ModbusRTUServer.configureHoldingRegisters(0x00, 10); 
 
   pjon_float_sensor_fault_cnt = setpoints_data.pjon_float_fault_timer; //
+  pjon_flow_sensor_fault_cnt = setpoints_data.pjon_float_fault_timer;
   
   timerConverterShutdownDelay.setInterval((setpoints_data.converter_shutdown_delay) * MINUTE);
 
-  //rtttl :: begin (BUZZER, melody_2);   // пиликаем при старте
+
+  //********** FreeRTOS tasks ***************************************************
+      xTaskCreate(
+      TaskPilikalka
+      ,  "Pilikalka"  // A name just for humans
+      ,  64 // This stack size can be checked & adjusted by reading the Stack Highwater //128
+      ,  NULL
+      ,  2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+      ,  &TaskPilikalka_Handler );
+
+      xTaskCreate(
+      TaskLoop
+      ,  "Loop"  // A name just for humans
+      ,  192  // This stack size can be checked & adjusted by reading the Stack Highwater //544
+      ,  NULL
+      ,  1  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+      ,  &TaskLoop_Handler );
+
+      xTaskCreate(
+      TaskMenuUpdate
+      ,  "MenuUpdate"  // A name just for humans
+      ,  160  // This stack size can be checked & adjusted by reading the Stack Highwater //512
+      ,  NULL
+      ,  2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+      ,  &TaskMenuUpdate_Handler );
+
+      xTaskCreate(
+      TaskTempSensorsUpdate
+      ,  "TempSensorsUpdate"  // A name just for humans
+      ,  128  // This stack size can be checked & adjusted by reading the Stack Highwater
+      ,  NULL
+      ,  1  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+      ,  &TaskTempSensorsUpdate_Handler );
+
+      xTaskCreate(
+      TaskPjonTransmitter
+      ,  "PjonTransmitt"  // A name just for humans
+      ,  120  // This stack size can be checked & adjusted by reading the Stack Highwater // 512
+      ,  NULL
+      ,  2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+      ,  &TaskPjonTransmitt_Handler );
+
+      xTaskCreate(
+      TaskVoltageMeasurement
+      ,  "VoltageMeasurement"  // A name just for humans
+      ,  64  // This stack size can be checked & adjusted by reading the Stack Highwater
+      ,  NULL
+      ,  1  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+      ,  &TaskVoltageMeasurement_Handler );
+
+      xTaskCreate(
+      TaskModBusPool
+      ,  "ModBusPool"  // A name just for humans
+      ,  690 // This stack size can be checked & adjusted by reading the Stack Highwater //1000
+      ,  NULL
+      ,  2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+      ,  &TaskModBusPool_Handler );
+
+      
+      xTaskCreate(
+      TaskOwScanner
+      ,  "OwScanner"  // A name just for humans
+      ,  128  // This stack size can be checked & adjusted by reading the Stack Highwater
+      ,  NULL
+      ,  3  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+      ,  &TaskOwScanner_Handler ); 
 
 
-
-  // FreeRTOS
       #if(DEBUG_GENERAL)
-            xTaskCreate(TaskSerial,
+            xTaskCreate(TaskDebugSerial,
                   "Serial",
                   128,
                   NULL, 
@@ -238,71 +283,9 @@ void setup() {
                   NULL);
       #endif
 
-  xTaskCreate(
-    TaskPilikalka
-    ,  "Pilikalka"  // A name just for humans
-    ,  64 // This stack size can be checked & adjusted by reading the Stack Highwater //128
-    ,  NULL
-    ,  2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-    ,  &TaskPilikalka_Handler );
-
-  xTaskCreate(
-    TaskLoop
-    ,  "Loop"  // A name just for humans
-    ,  192  // This stack size can be checked & adjusted by reading the Stack Highwater //544
-    ,  NULL
-    ,  1  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-    ,  &TaskLoop_Handler );
-
-    xTaskCreate(
-    TaskMenuUpdate
-    ,  "MenuUpdate"  // A name just for humans
-    ,  160  // This stack size can be checked & adjusted by reading the Stack Highwater //512
-    ,  NULL
-    ,  2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-    ,  &TaskMenuUpdate_Handler );
-
-    xTaskCreate(
-    TaskTempSensorsUpdate
-    ,  "TempSensorsUpdate"  // A name just for humans
-    ,  128  // This stack size can be checked & adjusted by reading the Stack Highwater
-    ,  NULL
-    ,  1  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-    ,  &TaskTempSensorsUpdate_Handler );
-
-    xTaskCreate(
-    TaskPjonTransmitter
-    ,  "PjonTransmitt"  // A name just for humans
-    ,  120  // This stack size can be checked & adjusted by reading the Stack Highwater // 512
-    ,  NULL
-    ,  2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-    ,  &TaskPjonTransmitt_Handler );
-
-    xTaskCreate(
-    TaskVoltageMeasurement
-    ,  "VoltageMeasurement"  // A name just for humans
-    ,  64  // This stack size can be checked & adjusted by reading the Stack Highwater
-    ,  NULL
-    ,  1  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-    ,  &TaskVoltageMeasurement_Handler );
-
-    xTaskCreate(
-    TaskModBusPool
-    ,  "ModBusPool"  // A name just for humans
-    ,  690 // This stack size can be checked & adjusted by reading the Stack Highwater //1000
-    ,  NULL
-    ,  2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-    ,  &TaskModBusPool_Handler );
-
-   
-    xTaskCreate(
-    TaskOwScanner
-    ,  "OwScanner"  // A name just for humans
-    ,  128  // This stack size can be checked & adjusted by reading the Stack Highwater
-    ,  NULL
-    ,  3  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-    ,  &TaskOwScanner_Handler ); 
-
+  myNex.writeStr("page 0");
+ 
+  //rtttl :: begin (BUZZER, melody_2);   // пиликаем при старте
 
 }
 
@@ -574,7 +557,7 @@ void fnMenuDynamicDataUpdate(void){
 
             case  CONVSET_PAGE:
                                     //обновляем динамические параметры страницы
-                                    myNex. writeNum(F("p6n0.val"), setpoints_data.converter_off_delay);
+                                    myNex. writeNum(F("p6n0.val"), setpoints_data.lowUconverter_off_delay);
                                     myNex. writeNum(F("p6n1.val"), setpoints_data.converter_shutdown_delay);
                                     myNex. writeNum(F("p6n2.val"), setpoints_data.converter_voltage_off);
                                     myNex. writeNum(F("p6n3.val"), setpoints_data.converter_voltage_on);
@@ -598,7 +581,7 @@ void fnMenuDynamicDataUpdate(void){
                                     }
 
                                     //меняем цвет уставки если значение изменено но не сохранено в EEPROM
-                                    if(old_setpoints_data.converter_off_delay != setpoints_data.converter_off_delay)myNex.writeNum("p6n0.pco", YELLOW);
+                                    if(old_setpoints_data.lowUconverter_off_delay != setpoints_data.lowUconverter_off_delay)myNex.writeNum("p6n0.pco", YELLOW);
                                     else myNex.writeNum(F("p6n0.pco"), WHITE);
                                     if(old_setpoints_data.converter_shutdown_delay != setpoints_data.converter_shutdown_delay)myNex.writeNum(F("p6n1.pco"), YELLOW);
                                     else myNex.writeNum(F("p6n1.pco"), WHITE);
@@ -617,7 +600,7 @@ void fnMenuDynamicDataUpdate(void){
                                                 myNex.writeNum(F("p6t3.pco"), WHITE);
                                                 myNex.writeNum(F("p6t4.pco"), WHITE);
                                                 myNex.writeNum(F("p6t5.pco"), WHITE);
-                                                variable_value = &setpoints_data.converter_off_delay;
+                                                variable_value = &setpoints_data.lowUconverter_off_delay;
                                                 var_min_value = 0;
                                                 var_max_value = 32; //min
                                                 break;
@@ -1000,7 +983,6 @@ void fnMenuDynamicDataUpdate(void){
                                           var_max_value = 1; 
                                     break;
 
-                                    // ПОКА НЕ ИСПОЛЬЗУЕТСЯ
                                     case 2:
                                           myNex.writeNum(F("p11t1.pco"), WHITE);
                                           myNex.writeNum(F("p11t2.pco"), BLUE);
@@ -1094,7 +1076,7 @@ flag_value_changed = HIGH;
 void  trigger4 (){
 EEPROM.updateBlock(EEPROM_SETPOINTS_ADDRESS, setpoints_data);
 memcpy(&old_setpoints_data, &setpoints_data, sizeof(Setpoints));
-timerPjonTransmittPeriod.setInterval(setpoints_data.pjon_transmitt_period * SECOND); // обновление таймингов
+timerPjonTransmittPeriod.setInterval(setpoints_data.pjon_transmitt_period * SECOND); // обновление интервала
 flag_value_changed = LOW;
 }
 //**********************************************************************************
@@ -1168,11 +1150,32 @@ void fnPumpControl(void){
 //Inputs Update 
    void fnInputsUpdate(void) {                  // функция обновления состояния входов (раз в   мсек)
 
+      if( !digitalRead(DOOR_SWITCH_INPUT_1)) inputs_undebounced_sample |= (1<<0);
+      else inputs_undebounced_sample &= ~(1<<0);
+
+      if(!digitalRead(PROXIMITY_SENSOR_INPUT_2)) inputs_undebounced_sample |= (1<<1);
+      else inputs_undebounced_sample &= ~(1<<1);
+
+      if(digitalRead(IGNITION_SWITCH_INPUT_3))inputs_undebounced_sample |= (1<<2);
+      else inputs_undebounced_sample &= ~(1<<2);
+
+      if(!digitalRead(LOW_WASHER_WATER_LEVEL_INPUT_4))inputs_undebounced_sample |= (1<<3);
+      else inputs_undebounced_sample &= ~(1<<3);
+
+      inputs_debounced_state = fnDebounce(inputs_undebounced_sample);
+
+      main_data.door_switch_state = (inputs_debounced_state & (1<<0));
+      main_data.proximity_sensor_state = (inputs_debounced_state & (1<<1));
+      main_data.ignition_switch_state = (inputs_debounced_state & (1<<2));
+      main_data.low_washer_water_level = (inputs_debounced_state & (1<<3));
+
+ /*
       main_data.door_switch_state = !digitalRead(DOOR_SWITCH_INPUT_1);           
       main_data.proximity_sensor_state = !digitalRead(PROXIMITY_SENSOR_INPUT_2);
       main_data.ignition_switch_state = digitalRead(IGNITION_SWITCH_INPUT_3);
       main_data.low_washer_water_level = !digitalRead(LOW_WASHER_WATER_LEVEL_INPUT_4);
-      
+ */
+
    }
 //*******************************************************************************
 
@@ -1198,9 +1201,10 @@ void fnPumpControl(void){
       }
       else                                                       // если ключ  не совпадает значит первый запуск
       {     
+            myNex.writeStr("p12t0.txt", "Writing defaults...");
             for(uint8_t i=0;i<3;i++ ){                            // мигнём три раза 
                   digitalWrite(BUILTIN_LED, HIGH);
-                  delay(1100);
+                  delay(1000);
                   digitalWrite(BUILTIN_LED, LOW);
                   delay(1000);
             }
@@ -1232,13 +1236,13 @@ bool fnConverterControl(float voltage, uint8_t mode){
      {
             case OFF_MODE:
                         state = LOW; 
-                        timerConverterOffDelay.stop(); // останавливаем таймер выключения
+                        timerLowUConverterOffDelay.stop(); // останавливаем таймер выключения
                         timerConverterShutdownDelay.stop(); //
                         break;
                         
             case ON_MODE:
                         state = HIGH;
-                        timerConverterOffDelay.stop(); // останавливаем таймер выключения
+                        timerLowUConverterOffDelay.stop(); // останавливаем таймер выключения
                         timerConverterShutdownDelay.stop();
                         break;
 
@@ -1246,22 +1250,22 @@ bool fnConverterControl(float voltage, uint8_t mode){
                         if(voltage >= setpoints_data.converter_voltage_on ){  // 
                              if(! flag_convOff_due_ign_switch) state = HIGH; // если напряжение в пределах нормы включаем преобразователь
                               flag_convOff_due_voltage = LOW; // флаг что было отключение по низкому напряжению
-                              timerConverterOffDelay.stop(); // останавливваем таймер выключения 
+                              timerLowUConverterOffDelay.stop(); // останавливваем таймер выключения 
 
                         }
 
                          
                         if( voltage > setpoints_data.converter_voltage_off ) { //               
-                              timerConverterOffDelay.setInterval(((uint32_t)setpoints_data.converter_off_delay) * MINUTE); // заряжаем таймер на выключение
+                              timerLowUConverterOffDelay.setInterval(((uint32_t)setpoints_data.lowUconverter_off_delay) * MINUTE); // заряжаем таймер на выключение
 
                         }
 
                         else {
 
-                              if( timerConverterOffDelay.isReady()){
+                              if( timerLowUConverterOffDelay.isReady()){
                                     state = LOW; 
                                     flag_convOff_due_voltage = HIGH; // флаг что было отключение по низкому напряжению
-                                    timerConverterOffDelay.stop(); // останавливаем таймер выключения
+                                    timerLowUConverterOffDelay.stop(); // останавливаем таймер выключения
                                     
                               }
                         }
@@ -1305,18 +1309,12 @@ float fnVoltageRead(void){
 // fnPjonReceiver 
 
    void pj_receiver_function(uint8_t *payload, uint16_t length, const PJON_Packet_Info &packet_info) {
-      #if(DEBUG_PJON_RX==1)
-      Serial.print("Receiver device id: ");
-      Serial.print(packet_info.receiver_id);
-      Serial.print(" | Transmitter device id: ");
-      Serial.println(packet_info.sender_id);
-      #endif
 
   receive_from_ID = packet_info.sender_id; // от кого пришли данные 
   
   if(receive_from_ID == PJON_WATER_LEVEL_SENSOR_ID){  // если данные пришли от датчика уровня ...
       memcpy(&pjon_wls_percent_receive, payload, sizeof(pjon_wls_percent_receive)); //... копируем данные в соответствующую структуру
-      pjon_float_sensor_fault_cnt = 0;  // if(pjon_float_sensor_fault_cnt > 0)pjon_float_sensor_fault_cnt--; // так не работает почемуто
+      pjon_float_sensor_fault_cnt = 0;  // 
    }
 
    if(receive_from_ID == PJON_WATER_FLOW_SENSOR_ID){  // если данные пришли от датчика протечки ...
@@ -1436,24 +1434,25 @@ float fnVoltageRead(void){
             myNex. NextionListen ();
 
             // ********* ModBus registers update ******************************
-            ModbusRTUServer.discreteInputWrite(0x00, main_data.ignition_switch_state);
-            ModbusRTUServer.discreteInputWrite(0x01, main_data.door_switch_state);
-            ModbusRTUServer.discreteInputWrite(0x02, main_data.proximity_sensor_state);
-            ModbusRTUServer.discreteInputWrite(0x03, main_data.pump_output_state);
-            ModbusRTUServer.discreteInputWrite(0x04, main_data.converter_output_state);
-            ModbusRTUServer.discreteInputWrite(0x05, main_data.light_output_state);
-            ModbusRTUServer.discreteInputWrite(0x06, flag_pjon_float_sensor_connected);
-            ModbusRTUServer.discreteInputWrite(0x07, flag_pjon_flow_sensor_connected);
-            ModbusRTUServer.discreteInputWrite(0x08, main_data.sensors_supply_output_state);
-            ModbusRTUServer.discreteInputWrite(0x09, main_data.low_washer_water_level); // 
-            ModbusRTUServer.inputRegisterWrite(0x00, main_data.battery_voltage * 10);
-            ModbusRTUServer.inputRegisterWrite(0x01, main_data.inside_temperature * 10);
-            ModbusRTUServer.inputRegisterWrite(0x02, main_data.outside_temperature * 10);
-            ModbusRTUServer.inputRegisterWrite(0x03, main_data.water_level_percent);
-            ModbusRTUServer.inputRegisterWrite(0x04, main_data.water_level_liter);
+            ModbusRTUServer.coilWrite(0x00, main_data.ignition_switch_state);
+            ModbusRTUServer.coilWrite(0x01, main_data.door_switch_state);
+            ModbusRTUServer.coilWrite(0x02, main_data.proximity_sensor_state);
+            ModbusRTUServer.coilWrite(0x03, main_data.pump_output_state);
+            ModbusRTUServer.coilWrite(0x04, main_data.converter_output_state);
+            ModbusRTUServer.coilWrite(0x05, main_data.light_output_state);
+            ModbusRTUServer.coilWrite(0x06, flag_pjon_float_sensor_connected);
+            ModbusRTUServer.coilWrite(0x07, flag_pjon_flow_sensor_connected);
+            ModbusRTUServer.coilWrite(0x08, main_data.sensors_supply_output_state);
+            ModbusRTUServer.coilWrite(0x09, main_data.low_washer_water_level); //
+             
+            ModbusRTUServer.holdingRegisterWrite(0x00, main_data.battery_voltage * 10);
+            ModbusRTUServer.holdingRegisterWrite(0x01, main_data.inside_temperature * 10);
+            ModbusRTUServer.holdingRegisterWrite(0x02, main_data.outside_temperature * 10);
+            ModbusRTUServer.holdingRegisterWrite(0x03, main_data.water_level_percent);
+            ModbusRTUServer.holdingRegisterWrite(0x04, main_data.water_level_liter);
 
-            ModbusRTUServer.inputRegisterWrite(0x05, pj_fault_counter_1);
-            ModbusRTUServer.inputRegisterWrite(0x06, pj_fault_counter_2);
+            ModbusRTUServer.holdingRegisterWrite(0x05, pj_float_sensor_fault_counter);
+            ModbusRTUServer.holdingRegisterWrite(0x06, pj_flow_sensor_fault_counter);
 
 
             if(timerInputsUpdate.isReady() && timerStartDelay.isReady()) fnInputsUpdate();
@@ -1463,7 +1462,7 @@ float fnVoltageRead(void){
             main_data.converter_output_state = fnConverterControl(main_data.battery_voltage, setpoints_data.convertet_out_mode);
 
 
-            //******* отслеживание изменения состояния двери
+            //******* отслеживание изменения состояния двери для звуковой индикации
             if(main_data.door_switch_state != flag_door_switch_old_state ){
                   flag_door_switch_old_state = main_data.door_switch_state;
                   if(main_data.door_switch_state){
@@ -1510,7 +1509,7 @@ float fnVoltageRead(void){
                   
                   if(!flag_pjon_float_sensor_connected){
                         if ( !rtttl::isPlaying() ) rtttl :: begin (BUZZER, melody_3);
-                        pj_fault_counter_1++; 
+                        pj_float_sensor_fault_counter++; 
                   }
                   else
                   {
@@ -1535,7 +1534,7 @@ float fnVoltageRead(void){
                   
                   if(!flag_pjon_flow_sensor_connected){
                         if ( !rtttl::isPlaying() ) rtttl :: begin (BUZZER, melody_3);
-                        pj_fault_counter_2++; 
+                        pj_flow_sensor_fault_counter++; 
                   }
                   else
                   {
@@ -1581,12 +1580,12 @@ float fnVoltageRead(void){
  //****************************************************************************
 
  //
- void TaskTempSensorsUpdate( void *pvParameters __attribute__((unused)) )  // This is a Task.
+ void TaskTempSensorsUpdate( void *pvParameters __attribute__((unused)) )  
  {
       while (1)
       {
-            flag_sensors_update = 1-flag_sensors_update;
-            if(!flag_sensors_update)temp_sensors.requestTemperatures();  //команда начала преобразования 
+            flag_ds18b20_update = 1-flag_ds18b20_update;
+            if(!flag_ds18b20_update)temp_sensors.requestTemperatures();  //команда начала преобразования 
             else{
                   main_data.inside_temperature = temp_sensors.getTempC(thermometerID_1);  // считывание температуры
                   main_data.outside_temperature = temp_sensors.getTempC(thermometerID_2);
@@ -1599,7 +1598,7 @@ float fnVoltageRead(void){
  //***************************************************************
 
  //
- void TaskPjonTransmitter( void *pvParameters __attribute__((unused)) )  // This is a Task.
+ void TaskPjonTransmitter( void *pvParameters __attribute__((unused)) )  
  {
       while (1)
       {
@@ -1616,7 +1615,7 @@ float fnVoltageRead(void){
 //********************************************************************
 
 //
-void TaskVoltageMeasurement( void *pvParameters __attribute__((unused)) )  // This is a Task.
+void TaskVoltageMeasurement( void *pvParameters __attribute__((unused)) )  
  {
       while (1)
       {
@@ -1635,7 +1634,7 @@ bool fnSensorsPowerControl(void){
 //**********************************************************************
 
 //
-void TaskModBusPool( void *pvParameters __attribute__((unused)) )  // This is a Task.
+void TaskModBusPool( void *pvParameters __attribute__((unused)) )  
  {
       while (1)
       {
@@ -1653,7 +1652,7 @@ void TaskModBusPool( void *pvParameters __attribute__((unused)) )  // This is a 
 //********************************************************************
 
 
-void TaskOwScanner( void *pvParameters __attribute__((unused)) )  // This is a Task.
+void TaskOwScanner( void *pvParameters __attribute__((unused)) )  
 {
       while (1)
       {
@@ -1866,9 +1865,9 @@ bool fnMainPowerControl(void){
 }
 //**********************************************************************
 
-//
+// DEBUG 
 #if(DEBUG_GENERAL)
-  void TaskSerial(void *pvParameters)
+  void TaskDebugSerial(void *pvParameters)
       {
             (void) pvParameters;
 
@@ -1885,14 +1884,12 @@ bool fnMainPowerControl(void){
 
                   // Serial task status
                   Serial.print F("- TASK ");
-                  Serial.print(pcTaskGetName(NULL)); // Get task name without handler https://www.freertos.org/a00021.html#pcTaskGetName
+                  Serial.print(pcTaskGetName(NULL));              //
                   Serial.print F(", High Watermark: ");
-                  Serial.print(uxTaskGetStackHighWaterMark(NULL)); // https://www.freertos.org/uxTaskGetStackHighWaterMark.html 
-
-
-                  TaskHandle_t taskSerialHandler = xTaskGetCurrentTaskHandle(); // Get current task handle. https://www.freertos.org/a00021.html#xTaskGetCurrentTaskHandle
-            
+                  Serial.print(uxTaskGetStackHighWaterMark(NULL)); //  
+                  //TaskHandle_t taskDebugSerialHandler = xTaskGetCurrentTaskHandle(); // 
                   Serial.println();
+
                   //Pilikalka
                   Serial.print F("- TASK ");
                   Serial.print(pcTaskGetName(TaskPilikalka_Handler)); // Get task name with handler
@@ -1949,31 +1946,70 @@ bool fnMainPowerControl(void){
                   Serial.print(uxTaskGetStackHighWaterMark(TaskOwScanner_Handler));
                   Serial.println(); 
                   
-
                   Serial.println();
                   Serial.println();
-
-                  /*
-                  vTaskList(ptrTaskList);
-                  Serial.println(F("**********************************"));
-                  Serial.println(F("Task  State   Prio    Stack    Num")); 
-                  Serial.println(F("**********************************"));
-                  Serial.print(ptrTaskList);
-                  Serial.println(F("**********************************")); 
-                  */
                   
-                  Serial.print F("timerShutdownDelay:  ");
-                  Serial.println(timerShutdownDelay.currentTime() / 1000);
+                  Serial.print F("timerPumpOffDelay:  ");
+                  Serial.println(timerPumpOffDelay.currentTime() / 1000);
+                  Serial.print F("timerLowUConverterOffDelay:  ");
+                  Serial.println(timerLowUConverterOffDelay.currentTime() / 1000);
                   Serial.print F("timerConverterShutdownDelay:  ");
                   Serial.println(timerConverterShutdownDelay.currentTime() /1000);
+                  Serial.print F("timerShutdownDelay:  ");
+                  Serial.println(timerShutdownDelay.currentTime() / 1000);
                   Serial.print F("timerScreenOffDelay:  ");
                   Serial.println(timerScreenOffDelay.currentTime() / 1000);
-                  Serial.println();
-                  Serial.println();
+
                   Serial.println();
 
+                  Serial.print F("door_switch_state:  ");
+                  Serial.println (main_data.door_switch_state);
+                  Serial.print F("ignition_switch_state:  ");
+                  Serial.println (main_data.ignition_switch_state);
+                  Serial.print F("proximity_sensor_state:  ");
+                  Serial.println (main_data.proximity_sensor_state);
+
+                  Serial.println();
+
+                  Serial.print F("converter_output_state:  ");
+                  Serial.println (main_data.converter_output_state);
+                  Serial.print F("light_output_state:  ");
+                  Serial.println (main_data.light_output_state);
+                  Serial.print F("pump_output_state:  ");
+                  Serial.println (main_data.pump_output_state);
+
+                  Serial.println();
+
+                  Serial.print F("pj_float_sensor_fault_counter:  ");
+                  Serial.println (pj_float_sensor_fault_counter);
+                  Serial.print F("pj_flow_sensor_fault_counter:  ");
+                  Serial.println (pj_flow_sensor_fault_counter);
+
+                  Serial.println();
+                  Serial.println();
             
                   vTaskDelay( 5000 / portTICK_PERIOD_MS );
             }
       }
-#endif      
+#endif    
+//*************************************************************************
+
+// Debounce 
+      uint8_t fnDebounce(uint8_t sample){        // антидребезг на основе вертикального счетчика
+
+            static uint8_t state, cnt0, cnt1;
+            uint8_t delta, toggle;
+
+            delta = sample ^ state;
+            cnt1 = cnt1 ^ cnt0;
+            cnt0 = ~cnt0;
+
+            cnt0 &= delta;
+            cnt1 &= delta;
+
+            toggle = cnt0 & cnt1;
+            state ^= toggle;
+            return state;
+
+      }
+//*************************************************************************

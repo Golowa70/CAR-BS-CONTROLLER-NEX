@@ -1,4 +1,0 @@
-nxPumpState.val=1ÿÿÿ
-
-nxPumpState.val=0ÿÿÿ
-
