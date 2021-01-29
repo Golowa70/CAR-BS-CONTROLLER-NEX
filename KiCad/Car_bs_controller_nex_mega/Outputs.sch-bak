@@ -1,0 +1,431 @@
+EESchema Schematic File Version 4
+EELAYER 30 0
+EELAYER END
+$Descr A4 11693 8268
+encoding utf-8
+Sheet 6 8
+Title "Car bs controller nex mega"
+Date ""
+Rev ""
+Comp ""
+Comment1 ""
+Comment2 ""
+Comment3 ""
+Comment4 ""
+$EndDescr
+$Comp
+L Transistor_Array:ULN2003A U6
+U 1 1 6003689D
+P 3900 2650
+F 0 "U6" H 3900 3317 50  0000 C CNN
+F 1 "ULN2003A" H 3900 3226 50  0000 C CNN
+F 2 "Package_SO:SOIC-16_3.9x9.9mm_P1.27mm" H 3950 2100 50  0001 L CNN
+F 3 "http://www.ti.com/lit/ds/symlink/uln2003a.pdf" H 4000 2450 50  0001 C CNN
+	1    3900 2650
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	6200 3750 6200 2550
+Wire Wire Line
+	6200 2550 5450 2550
+Wire Wire Line
+	6100 2650 5800 2650
+$Comp
+L power:+12V #PWR055
+U 1 1 6003D5D2
+P 4300 1850
+F 0 "#PWR055" H 4300 1700 50  0001 C CNN
+F 1 "+12V" H 4315 2023 50  0000 C CNN
+F 2 "" H 4300 1850 50  0001 C CNN
+F 3 "" H 4300 1850 50  0001 C CNN
+	1    4300 1850
+	1    0    0    -1  
+$EndComp
+Text GLabel 2550 2450 0    50   Input ~ 0
+MCU_water_pump_out
+Text GLabel 2300 2650 0    50   Input ~ 0
+MCU_light_out
+Text GLabel 2450 2850 0    50   Input ~ 0
+MCU_converter_out
+Wire Wire Line
+	2550 2450 3500 2450
+Wire Wire Line
+	3500 2550 3000 2550
+Wire Wire Line
+	3000 2550 3000 2650
+Wire Wire Line
+	3000 2650 2300 2650
+Wire Wire Line
+	3500 2650 3100 2650
+Wire Wire Line
+	3100 2650 3100 2850
+Wire Wire Line
+	3100 2850 2450 2850
+Text GLabel 8950 2450 2    50   Output ~ 0
+PUMP_RELAY_NO
+Text GLabel 8950 2150 2    50   Output ~ 0
+PUMP_RELAY_COM
+Text GLabel 8950 3750 2    50   Output ~ 0
+LIGHT_RELAY_NO
+Text GLabel 8950 3450 2    50   Output ~ 0
+LIGHT_RELAY_COM
+Text GLabel 8850 4750 2    50   Output ~ 0
+CONVERTER_RELAY_COM
+Text GLabel 8850 5050 2    50   Output ~ 0
+CONVERTER_RELAY_NO
+Wire Wire Line
+	6750 3750 6200 3750
+$Comp
+L power:GND #PWR054
+U 1 1 60076725
+P 3900 3400
+F 0 "#PWR054" H 3900 3150 50  0001 C CNN
+F 1 "GND" H 3905 3227 50  0000 C CNN
+F 2 "" H 3900 3400 50  0001 C CNN
+F 3 "" H 3900 3400 50  0001 C CNN
+	1    3900 3400
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	3900 3400 3900 3250
+Text GLabel 2400 3050 0    50   Input ~ 0
+MCU_spare_out_1
+Text GLabel 2400 3250 0    50   Input ~ 0
+MCU_spare_out_2
+Text GLabel 2400 3450 0    50   Input ~ 0
+MCU_spare_out_3
+Text GLabel 2400 3650 0    50   Input ~ 0
+MCU_spare_out_4
+Wire Wire Line
+	3500 2750 3200 2750
+Wire Wire Line
+	3200 2750 3200 3050
+Wire Wire Line
+	3200 3050 2400 3050
+Wire Wire Line
+	3500 2850 3300 2850
+Wire Wire Line
+	3300 2850 3300 3250
+Wire Wire Line
+	3300 3250 2400 3250
+Wire Wire Line
+	3500 2950 3400 2950
+Wire Wire Line
+	3400 2950 3400 3450
+Wire Wire Line
+	3400 3450 2400 3450
+Wire Wire Line
+	3500 3050 3500 3650
+Wire Wire Line
+	3500 3650 2400 3650
+Connection ~ 4300 2050
+Wire Wire Line
+	4300 2050 4300 2250
+$Comp
+L 1393217-4:1393217-4 K2
+U 1 1 6001DC1E
+P 7150 3550
+F 0 "K2" H 7100 4017 50  0000 C CNN
+F 1 "1393217-4" H 7100 3926 50  0000 C CNN
+F 2 "RELAY_1393217-4" H 7150 3550 50  0001 L BNN
+F 3 "" H 7150 3550 50  0001 L BNN
+F 4 "1393217-4" H 7150 3550 50  0001 L BNN "Comment"
+	1    7150 3550
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	6750 3350 6350 3350
+Wire Wire Line
+	8950 3750 8200 3750
+$Comp
+L 1393217-4:1393217-4 K3
+U 1 1 60025037
+P 7150 4850
+F 0 "K3" H 7100 5317 50  0000 C CNN
+F 1 "1393217-4" H 7100 5226 50  0000 C CNN
+F 2 "RELAY_1393217-4" H 7150 4850 50  0001 L BNN
+F 3 "" H 7150 4850 50  0001 L BNN
+F 4 "1393217-4" H 7150 4850 50  0001 L BNN "Comment"
+	1    7150 4850
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	6350 4650 6350 3350
+Wire Wire Line
+	6350 4650 6750 4650
+Wire Wire Line
+	6750 5050 6100 5050
+Wire Wire Line
+	8850 5050 8200 5050
+Wire Wire Line
+	6100 2650 6100 5050
+Wire Wire Line
+	6350 3350 6350 2050
+Connection ~ 6350 3350
+Connection ~ 6350 2050
+Wire Wire Line
+	6350 2050 6750 2050
+Wire Wire Line
+	7450 2450 8250 2450
+$Comp
+L 1393217-4:1393217-4 K1
+U 1 1 6000C624
+P 7150 2250
+F 0 "K1" H 7100 2717 50  0000 C CNN
+F 1 "1393217-4" H 7100 2626 50  0000 C CNN
+F 2 "RELAY_1393217-4" H 7150 2250 50  0001 L BNN
+F 3 "" H 7150 2250 50  0001 L BNN
+F 4 "1393217-4" H 7150 2250 50  0001 L BNN "Comment"
+	1    7150 2250
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:Varistor RV4
+U 1 1 6001EA98
+P 8250 2300
+F 0 "RV4" H 8353 2346 50  0000 L CNN
+F 1 "S07K17" H 8353 2255 50  0000 L CNN
+F 2 "Varistor:RV_Disc_D9mm_W3.7mm_P5mm" V 8180 2300 50  0001 C CNN
+F 3 "~" H 8250 2300 50  0001 C CNN
+	1    8250 2300
+	1    0    0    -1  
+$EndComp
+Connection ~ 8250 2450
+Wire Wire Line
+	8250 2450 8950 2450
+Wire Wire Line
+	8250 2150 7550 2150
+Wire Wire Line
+	7550 2150 7550 2250
+Wire Wire Line
+	7550 2250 7450 2250
+Wire Wire Line
+	8950 2150 8250 2150
+Connection ~ 8250 2150
+$Comp
+L Device:Varistor RV2
+U 1 1 60020EDF
+P 8200 3600
+F 0 "RV2" H 8303 3646 50  0000 L CNN
+F 1 "S07K17" H 8303 3555 50  0000 L CNN
+F 2 "Varistor:RV_Disc_D9mm_W3.7mm_P5mm" V 8130 3600 50  0001 C CNN
+F 3 "~" H 8200 3600 50  0001 C CNN
+	1    8200 3600
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:Varistor RV3
+U 1 1 60021A69
+P 8200 4900
+F 0 "RV3" H 8303 4946 50  0000 L CNN
+F 1 "S07K17" H 8303 4855 50  0000 L CNN
+F 2 "Varistor:RV_Disc_D9mm_W3.7mm_P5mm" V 8130 4900 50  0001 C CNN
+F 3 "~" H 8200 4900 50  0001 C CNN
+	1    8200 4900
+	1    0    0    -1  
+$EndComp
+Connection ~ 8200 3750
+Wire Wire Line
+	8200 3750 7450 3750
+Wire Wire Line
+	8950 3450 8200 3450
+Wire Wire Line
+	8200 3450 7550 3450
+Wire Wire Line
+	7550 3450 7550 3550
+Wire Wire Line
+	7550 3550 7450 3550
+Connection ~ 8200 3450
+Connection ~ 8200 5050
+Wire Wire Line
+	8200 5050 7450 5050
+Wire Wire Line
+	8850 4750 8200 4750
+Wire Wire Line
+	8200 4750 7450 4750
+Wire Wire Line
+	7450 4750 7450 4850
+Connection ~ 8200 4750
+Wire Wire Line
+	4600 4350 4600 2750
+Wire Wire Line
+	4600 2750 4300 2750
+Wire Wire Line
+	4300 2850 4650 2850
+Wire Wire Line
+	4650 2850 4650 4450
+Wire Wire Line
+	4300 2950 4700 2950
+Wire Wire Line
+	4700 2950 4700 4550
+Wire Wire Line
+	4750 4650 4750 3050
+Wire Wire Line
+	4750 3050 4300 3050
+Wire Wire Line
+	4300 2050 4900 2050
+$Comp
+L Simulation_SPICE:DIODE D38
+U 1 1 60039BB9
+P 4550 4750
+F 0 "D38" H 4550 4850 50  0000 C CNN
+F 1 "SS14" H 4500 4950 50  0000 C CNN
+F 2 "Diode_SMD:D_SMA" H 4550 4750 50  0001 C CNN
+F 3 "~" H 4550 4750 50  0001 C CNN
+F 4 "Y" H 4550 4750 50  0001 L CNN "Spice_Netlist_Enabled"
+F 5 "D" H 4550 4750 50  0001 L CNN "Spice_Primitive"
+	1    4550 4750
+	-1   0    0    1   
+$EndComp
+Wire Wire Line
+	4700 4750 4900 4750
+Wire Wire Line
+	4900 4750 4900 3500
+Connection ~ 4900 2050
+Wire Wire Line
+	4900 2050 6350 2050
+Text GLabel 4050 4350 0    50   Output ~ 0
+Socket_spare_out_1
+Text GLabel 4050 4450 0    50   Output ~ 0
+Socket_spare_out_2
+Text GLabel 4050 4550 0    50   Output ~ 0
+Socket_spare_out_3
+Text GLabel 4050 4650 0    50   Output ~ 0
+Socket_spare_out_4
+Text GLabel 4050 4750 0    50   Output ~ 0
+Socket_spare_out_+12v
+Wire Wire Line
+	4050 4350 4600 4350
+Wire Wire Line
+	4050 4450 4650 4450
+Wire Wire Line
+	4050 4550 4700 4550
+Wire Wire Line
+	4050 4650 4750 4650
+Wire Wire Line
+	4050 4750 4400 4750
+NoConn ~ 2750 3050
+NoConn ~ 2750 3250
+NoConn ~ 2750 3450
+NoConn ~ 2750 3650
+Wire Wire Line
+	4300 1850 4300 2050
+Wire Wire Line
+	4300 2450 5100 2450
+$Comp
+L Device:LED D?
+U 1 1 6011C2E4
+P 5100 3250
+AR Path="/5FF96CA3/6011C2E4" Ref="D?"  Part="1" 
+AR Path="/5FF96DB0/6011C2E4" Ref="D39"  Part="1" 
+F 0 "D39" V 5200 3300 50  0000 L CNN
+F 1 "LED_K1" V 5450 3100 50  0000 L CNN
+F 2 "LED_SMD:LED_0603_1608Metric" H 5100 3250 50  0001 C CNN
+F 3 "~" H 5100 3250 50  0001 C CNN
+	1    5100 3250
+	0    -1   1    0   
+$EndComp
+$Comp
+L Device:R R?
+U 1 1 6011C2EA
+P 5100 2900
+AR Path="/5FF96CA3/6011C2EA" Ref="R?"  Part="1" 
+AR Path="/5FF96DB0/6011C2EA" Ref="R61"  Part="1" 
+F 0 "R61" H 5170 2946 50  0000 L CNN
+F 1 "2k2" H 5170 2855 50  0000 L CNN
+F 2 "Resistor_SMD:R_0603_1608Metric" V 5030 2900 50  0001 C CNN
+F 3 "~" H 5100 2900 50  0001 C CNN
+	1    5100 2900
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	5100 3100 5100 3050
+Wire Wire Line
+	5100 3500 5100 3400
+$Comp
+L Device:LED D?
+U 1 1 60124D70
+P 5450 3250
+AR Path="/5FF96CA3/60124D70" Ref="D?"  Part="1" 
+AR Path="/5FF96DB0/60124D70" Ref="D40"  Part="1" 
+F 0 "D40" V 5550 3300 50  0000 L CNN
+F 1 "LED_K2" V 5800 3100 50  0000 L CNN
+F 2 "LED_SMD:LED_0603_1608Metric" H 5450 3250 50  0001 C CNN
+F 3 "~" H 5450 3250 50  0001 C CNN
+	1    5450 3250
+	0    -1   1    0   
+$EndComp
+$Comp
+L Device:R R?
+U 1 1 60124D76
+P 5450 2900
+AR Path="/5FF96CA3/60124D76" Ref="R?"  Part="1" 
+AR Path="/5FF96DB0/60124D76" Ref="R62"  Part="1" 
+F 0 "R62" H 5520 2946 50  0000 L CNN
+F 1 "2k2" H 5520 2855 50  0000 L CNN
+F 2 "Resistor_SMD:R_0603_1608Metric" V 5380 2900 50  0001 C CNN
+F 3 "~" H 5450 2900 50  0001 C CNN
+	1    5450 2900
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	5450 3100 5450 3050
+Wire Wire Line
+	5450 3500 5450 3400
+$Comp
+L Device:LED D?
+U 1 1 6012B195
+P 5800 3250
+AR Path="/5FF96CA3/6012B195" Ref="D?"  Part="1" 
+AR Path="/5FF96DB0/6012B195" Ref="D41"  Part="1" 
+F 0 "D41" V 5900 3300 50  0000 L CNN
+F 1 "LED_K3" V 6150 3100 50  0000 L CNN
+F 2 "LED_SMD:LED_0603_1608Metric" H 5800 3250 50  0001 C CNN
+F 3 "~" H 5800 3250 50  0001 C CNN
+	1    5800 3250
+	0    -1   1    0   
+$EndComp
+$Comp
+L Device:R R?
+U 1 1 6012B19B
+P 5800 2900
+AR Path="/5FF96CA3/6012B19B" Ref="R?"  Part="1" 
+AR Path="/5FF96DB0/6012B19B" Ref="R63"  Part="1" 
+F 0 "R63" H 5870 2946 50  0000 L CNN
+F 1 "2k2" H 5870 2855 50  0000 L CNN
+F 2 "Resistor_SMD:R_0603_1608Metric" V 5730 2900 50  0001 C CNN
+F 3 "~" H 5800 2900 50  0001 C CNN
+	1    5800 2900
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	5800 3100 5800 3050
+Wire Wire Line
+	5800 3500 5800 3400
+Wire Wire Line
+	5800 3500 5450 3500
+Wire Wire Line
+	5100 3500 5450 3500
+Connection ~ 5450 3500
+Wire Wire Line
+	5100 3500 4900 3500
+Connection ~ 5100 3500
+Connection ~ 4900 3500
+Wire Wire Line
+	4900 3500 4900 2050
+Wire Wire Line
+	5100 2450 5100 2750
+Connection ~ 5100 2450
+Wire Wire Line
+	5100 2450 6750 2450
+Wire Wire Line
+	5450 2550 5450 2750
+Connection ~ 5450 2550
+Wire Wire Line
+	5450 2550 4300 2550
+Wire Wire Line
+	5800 2650 5800 2750
+Connection ~ 5800 2650
+Wire Wire Line
+	5800 2650 4300 2650
+$EndSCHEMATC

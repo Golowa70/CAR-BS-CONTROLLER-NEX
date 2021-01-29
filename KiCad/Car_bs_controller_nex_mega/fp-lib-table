@@ -1,0 +1,6 @@
+(fp_lib_table
+  (lib (name MODULE_MEGA_PRO_EMBED_CH340G_)(type KiCad)(uri C:/Users/Yuri/Downloads/MEGA_PRO_EMBED_CH340G___ATMEGA2560/MODULE_MEGA_PRO_EMBED_CH340G_)(options "")(descr ""))
+  (lib (name re030012_kicad)(type KiCad)(uri C:/Users/Yuri/Downloads/re030012_kicad)(options "")(descr ""))
+  (lib (name OLIMEX_IC-FP)(type KiCad)(uri "C:/Users/Yuri/Documents/Kicad_libs/Olimex KiCAD_libs/KiCAD_Footprints/OLIMEX_IC-FP.pretty")(options "")(descr ""))
+  (lib (name PKLCS1212E4001-R1)(type KiCad)(uri C:/Users/Yuri/Documents/MEGAsync/Projects/Car_bs_controller_nex/KiCad/Libs/PKLCS1212E4001-R1)(options "")(descr ""))
+)

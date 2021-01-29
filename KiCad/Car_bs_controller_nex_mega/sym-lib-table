@@ -1,0 +1,8 @@
+(sym_lib_table
+  (lib (name MEGA_PRO_EMBED_CH340G___ATMEGA2560)(type Legacy)(uri C:/Users/Yuri/Downloads/MEGA_PRO_EMBED_CH340G___ATMEGA2560/MEGA_PRO_EMBED_CH340G___ATMEGA2560.lib)(options "")(descr ""))
+  (lib (name Car_bs_controller_nex_mega-rescue)(type Legacy)(uri ${KIPRJMOD}/Car_bs_controller_nex_mega-rescue.lib)(options "")(descr ""))
+  (lib (name 1393217-4)(type Legacy)(uri C:/Users/Yuri/Downloads/re030012_kicad/1393217-4.lib)(options "")(descr ""))
+  (lib (name OLIMEX_IC)(type Legacy)(uri "C:/Users/Yuri/Documents/Kicad_libs/Olimex KiCAD_libs/KiCAD_Components/OLIMEX_IC.lib")(options "")(descr ""))
+  (lib (name PKLCS1212E4001-R1)(type Legacy)(uri C:/Users/Yuri/Documents/MEGAsync/Projects/Car_bs_controller_nex/KiCad/Libs/PKLCS1212E4001-R1/PKLCS1212E4001-R1.lib)(options "")(descr ""))
+  (lib (name ADM705)(type Legacy)(uri C:/Users/Yuri/Documents/MEGAsync/Projects/Car_bs_controller_nex/KiCad/Libs/ADM705.lib)(options "")(descr ""))
+)
