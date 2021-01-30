@@ -122,7 +122,7 @@ Connection ~ 4300 2050
 Wire Wire Line
 	4300 2050 4300 2250
 $Comp
-L 1393217-4:1393217-4 K2
+L Car_bs_controller_nex_mega-rescue:1393217-4-1393217-4 K2
 U 1 1 6001DC1E
 P 7150 3550
 F 0 "K2" H 7100 4017 50  0000 C CNN
@@ -138,7 +138,7 @@ Wire Wire Line
 Wire Wire Line
 	8950 3750 8200 3750
 $Comp
-L 1393217-4:1393217-4 K3
+L Car_bs_controller_nex_mega-rescue:1393217-4-1393217-4 K3
 U 1 1 60025037
 P 7150 4850
 F 0 "K3" H 7100 5317 50  0000 C CNN
@@ -168,7 +168,7 @@ Wire Wire Line
 Wire Wire Line
 	7450 2450 8250 2450
 $Comp
-L 1393217-4:1393217-4 K1
+L Car_bs_controller_nex_mega-rescue:1393217-4-1393217-4 K1
 U 1 1 6000C624
 P 7150 2250
 F 0 "K1" H 7100 2717 50  0000 C CNN

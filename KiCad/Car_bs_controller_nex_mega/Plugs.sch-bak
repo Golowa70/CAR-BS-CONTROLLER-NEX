@@ -453,8 +453,6 @@ F 3 "~" H 5700 4200 50  0001 C CNN
 	1    5700 4200
 	1    0    0    -1  
 $EndComp
-Wire Wire Line
-	6350 3450 6350 4100
 Connection ~ 6350 3450
 Wire Wire Line
 	6350 3450 5000 3450
@@ -695,22 +693,11 @@ F 3 "~" H 9450 3900 50  0001 C CNN
 	1    9450 3900
 	1    0    0    -1  
 $EndComp
-Wire Wire Line
-	9250 3800 7000 3800
-Wire Wire Line
-	7000 3800 7000 4000
-Wire Wire Line
-	7000 4000 6250 4000
-Wire Wire Line
-	9250 4100 6350 4100
-Connection ~ 6350 4100
-Wire Wire Line
-	6350 4100 6350 4400
-Text GLabel 8700 3900 0    50   BiDi ~ 0
+Text GLabel 8600 3900 0    50   BiDi ~ 0
 MCU_I2C_SDA
 Wire Wire Line
 	9250 3900 9150 3900
-Text GLabel 8700 4000 0    50   BiDi ~ 0
+Text GLabel 8600 4000 0    50   BiDi ~ 0
 MCU_I2C_SCL
 Wire Wire Line
 	9250 4000 8900 4000
@@ -740,17 +727,30 @@ Wire Wire Line
 	8900 4200 8900 4000
 Connection ~ 8900 4000
 Wire Wire Line
-	8900 4000 8700 4000
+	8900 4000 8600 4000
 Wire Wire Line
 	9150 4200 9150 3900
 Connection ~ 9150 3900
 Wire Wire Line
-	9150 3900 8700 3900
+	9150 3900 8600 3900
 Wire Wire Line
 	9150 4500 8900 4500
-Text GLabel 8700 4500 0    50   BiDi ~ 0
+Text GLabel 8600 3800 0    50   BiDi ~ 0
 +5v_FROM_MCU
 Wire Wire Line
 	8700 4500 8900 4500
 Connection ~ 8900 4500
+Wire Wire Line
+	8700 4500 8700 3800
+Wire Wire Line
+	8700 3800 8600 3800
+Wire Wire Line
+	9250 3800 8700 3800
+Connection ~ 8700 3800
+Wire Wire Line
+	6350 3450 6350 4400
+Text GLabel 8600 4100 0    50   Input ~ 0
+GND
+Wire Wire Line
+	9250 4100 8600 4100
 $EndSCHEMATC
