@@ -66,8 +66,8 @@ void fnDefaultSetpointsInit(void){
     setpoints_data.voltage_correction = 127; // 
     setpoints_data.shutdown_delay = 1; // час
     setpoints_data.lcd_brightness = 90;   
-    setpoints_data.spare_byte_1 = 0;
-    setpoints_data.spare_byte_2 = 0;
+    setpoints_data.logo_selection = 0;
+    setpoints_data.spare_byte = 0;
     
 }
 

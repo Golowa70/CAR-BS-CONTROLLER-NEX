@@ -68,10 +68,10 @@
     uint8_t voltage_correction; // 127 - нолевая коррекция
     uint8_t shutdown_delay;
     uint8_t lcd_brightness;   
-    uint8_t spare_byte_1;
-    uint8_t spare_byte_2;
+    uint8_t logo_selection;
+    uint8_t spare_byte;
     uint8_t sensors_ID_array [MAX_TEMP_SENSORS][8];
-    uint8_t sensors_select_array[MAX_TEMP_SENSORS ]; // inside, outside, spare
+    uint8_t sensors_select_array[MAX_TEMP_SENSORS ];  // inside, outside, spare
   } setpoints_data, default_setpoints_data, old_setpoints_data;
 
 //********** end setpoints variables ******************************************************************

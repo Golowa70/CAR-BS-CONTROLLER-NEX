@@ -283,7 +283,28 @@ void setup() {
                   NULL);
       #endif
 
-  myNex.writeStr("page 0");
+
+      switch (setpoints_data.logo_selection)
+      {
+            case 0:
+                  myNex.writeStr("page 13");
+                  break;
+
+            case 1:
+                  myNex.writeStr("page 14");
+                  break;
+
+            case 2:
+                  myNex.writeStr("page 15");
+                  break;
+
+            case 3:
+                  myNex.writeStr("page 16");
+                  break;
+      
+            default:
+            break;
+      }
  
   //rtttl :: begin (BUZZER, melody_2);   // пиликаем при старте
 
@@ -956,6 +977,7 @@ void fnMenuDynamicDataUpdate(void){
                               myNex. writeNum(F("p11n1.val"), setpoints_data.scrreen_off_delay);
                               myNex. writeNum(F("p11n2.val"), setpoints_data.voltage_correction);
                               myNex. writeNum(F("p11n3.val"), setpoints_data.lcd_brightness);
+                              myNex. writeNum(F("p11n4.val"), setpoints_data.logo_selection);
                               
 
                               //меняем цвет уставки если значение изменено но не сохранено в EEPROM
@@ -969,6 +991,8 @@ void fnMenuDynamicDataUpdate(void){
                               else myNex.writeNum(F("p11n2.pco"), WHITE);
                               if(old_setpoints_data.lcd_brightness != setpoints_data.lcd_brightness)myNex.writeNum(F("p11n3.pco"), YELLOW);
                               else myNex.writeNum(F("p11n3.pco"), WHITE);
+                              if(old_setpoints_data.logo_selection != setpoints_data.logo_selection)myNex.writeNum(F("p11n4.pco"), YELLOW);
+                              else myNex.writeNum(F("p11n4.pco"), WHITE);
                               
                               switch (current_item)
                               {
@@ -978,6 +1002,7 @@ void fnMenuDynamicDataUpdate(void){
                                           myNex.writeNum(F("p11t3.pco"), WHITE);
                                           myNex.writeNum(F("p11t4.pco"), WHITE);
                                           myNex.writeNum(F("p11t5.pco"), WHITE);
+                                          myNex.writeNum(F("p11t7.pco"), WHITE);
                                           variable_value = &setpoints_data.buzzer_out_mode;
                                           var_min_value = 0;
                                           var_max_value = 1; 
@@ -989,6 +1014,7 @@ void fnMenuDynamicDataUpdate(void){
                                           myNex.writeNum(F("p11t3.pco"), WHITE);
                                           myNex.writeNum(F("p11t4.pco"), WHITE);
                                           myNex.writeNum(F("p11t5.pco"), WHITE);
+                                          myNex.writeNum(F("p11t7.pco"), WHITE);
                                           variable_value = &setpoints_data.shutdown_delay;
                                           var_min_value = 1;
                                           var_max_value = 24; // hours
@@ -1000,6 +1026,7 @@ void fnMenuDynamicDataUpdate(void){
                                           myNex.writeNum(F("p11t3.pco"), BLUE);
                                           myNex.writeNum(F("p11t4.pco"), WHITE);
                                           myNex.writeNum(F("p11t5.pco"), WHITE);
+                                          myNex.writeNum(F("p11t7.pco"), WHITE);
                                           variable_value = &setpoints_data.scrreen_off_delay;
                                           var_min_value = 1;
                                           var_max_value = 180; // min
@@ -1011,6 +1038,7 @@ void fnMenuDynamicDataUpdate(void){
                                           myNex.writeNum(F("p11t3.pco"), WHITE);
                                           myNex.writeNum(F("p11t4.pco"), BLUE);
                                           myNex.writeNum(F("p11t5.pco"), WHITE);
+                                          myNex.writeNum(F("p11t7.pco"), WHITE);
                                           variable_value = &setpoints_data.voltage_correction;
                                           var_min_value = 0;
                                           var_max_value = 255; 
@@ -1022,9 +1050,22 @@ void fnMenuDynamicDataUpdate(void){
                                           myNex.writeNum(F("p11t3.pco"), WHITE);
                                           myNex.writeNum(F("p11t4.pco"), WHITE);
                                           myNex.writeNum(F("p11t5.pco"), BLUE);
+                                          myNex.writeNum(F("p11t7.pco"), WHITE);
                                           variable_value = &setpoints_data.lcd_brightness;
                                           var_min_value = 10;
                                           var_max_value = 100; 
+                                    break;
+
+                                    case 6:
+                                          myNex.writeNum(F("p11t1.pco"), WHITE);
+                                          myNex.writeNum(F("p11t2.pco"), WHITE);
+                                          myNex.writeNum(F("p11t3.pco"), WHITE);
+                                          myNex.writeNum(F("p11t4.pco"), WHITE);
+                                          myNex.writeNum(F("p11t5.pco"), WHITE);
+                                          myNex.writeNum(F("p11t7.pco"), BLUE);
+                                          variable_value = &setpoints_data.logo_selection;
+                                          var_min_value = 0;
+                                          var_max_value = 3; 
                                     break;
 
                                     default:
@@ -1033,6 +1074,7 @@ void fnMenuDynamicDataUpdate(void){
                                           myNex.writeNum(F("p11t3.pco"), WHITE);
                                           myNex.writeNum(F("p11t4.pco"), WHITE);
                                           myNex.writeNum(F("p11t5.pco"), WHITE);
+                                          myNex.writeNum(F("p11t7.pco"), WHITE);
                                           variable_value = NULL;
                                           var_min_value = 0;
                                           var_max_value = 0;
