@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 
-#define DEBUG_GENERAL 1
+#define DEBUG_GENERAL 0
 
 //colors
 #define WHITE       65535
