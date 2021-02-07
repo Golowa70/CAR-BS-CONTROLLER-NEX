@@ -287,19 +287,19 @@ void setup() {
       switch (setpoints_data.logo_selection)
       {
             case 0:
-                  myNex.writeStr("page 13");
+                  myNex.writeStr("page 0");
                   break;
 
             case 1:
-                  myNex.writeStr("page 14");
+                  myNex.writeStr("page 13");
                   break;
 
             case 2:
-                  myNex.writeStr("page 15");
+                  myNex.writeStr("page 14");
                   break;
 
             case 3:
-                  myNex.writeStr("page 16");
+                  myNex.writeStr("page 15");
                   break;
       
             default:
