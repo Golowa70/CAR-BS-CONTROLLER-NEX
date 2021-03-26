@@ -15,8 +15,10 @@ void fnIOInit(void) {
         pinMode(LOW_WASHER_WATER_LEVEL_INPUT_4, INPUT_PULLUP);//
         pinMode(WATER_FLOW_SENSOR, INPUT_PULLUP);//
         pinMode(BUTTON_ON_BOARD, INPUT_PULLUP);//
+        pinMode(POWER_OK_FROM_ADM705, INPUT_PULLUP);//
 
-        analogReference(INTERNAL2V56);          // внутренний исочник опорного напряжения 2.56в
+        //analogReference(INTERNAL2V56);      // внутренний исочник опорного напряжения 2.56в
+        analogReference(EXTERNAL);          // внешний исочник опорного напряжения 2.5в(TL431)
 
     //outputs declaration
         pinMode(WATER_PUMP_OUTPUT_1, OUTPUT);
@@ -27,6 +29,7 @@ void fnIOInit(void) {
         pinMode(BUZZER , OUTPUT);
         pinMode(BUILTIN_LED, OUTPUT); 
         pinMode(WDT_RESET_OUT, OUTPUT); 
+        pinMode(DE_RS485_PIN, OUTPUT);
 
     //outputs start state
         digitalWrite(WATER_PUMP_OUTPUT_1, LOW);

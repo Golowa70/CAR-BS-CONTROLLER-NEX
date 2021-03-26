@@ -83,6 +83,7 @@
     float outside_temperature;     //  наружная температура
     float inside_temperature;       // температура внутри
     float spare_temperature;       // температура третьего датчика
+    float sensors_supply_voltage;  //
     uint8_t water_level_percent;
     uint8_t water_level_liter;
     bool door_switch_state;        // состояние концевика задней двери

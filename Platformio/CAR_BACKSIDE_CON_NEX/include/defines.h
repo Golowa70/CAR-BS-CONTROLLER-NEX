@@ -48,7 +48,7 @@
 //communications
 #define PJON_BUS_PIN         3   // new 
 #define ONE_WIRE_PIN         4
-#define DE_RS485_PIN         6
+#define DE_RS485_PIN         6   // in RS485.h
 
 // water level sensor
 #define WATER_LEVEL_LESS_THEN_25      1      
@@ -67,11 +67,13 @@
 //inputs
 #define DOOR_SWITCH_INPUT_1                 54       //A0
 #define PROXIMITY_SENSOR_INPUT_2            55       //A1
-#define IGNITION_SWITCH_INPUT_3             56       //A2
+#define IGNITION_SWITCH_INPUT_3             56       //A2 
 #define LOW_WASHER_WATER_LEVEL_INPUT_4      57       //A3
 #define SUPPLY_VOLTAGE_INPUT                A4       //A4
+#define SENSORS_VOLTAGE_INPUT               A5       //A5
 #define WATER_FLOW_SENSOR                    5       //YF-S201 (пока не используется)
 #define BUTTON_ON_BOARD                     10       // кнопка на плате (пока не используется)
+#define POWER_OK_FROM_ADM705                41       //
 //#define ENCODER_SW							35
 //#define ENCODER_DT							36
 //#define ENCODER_CLK							37

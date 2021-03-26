@@ -44,8 +44,10 @@ GTimer timerScreenOffDelay;
 GTimer timerInputsUpdate;     // таймер период обновления входов
 GTimer timerStartDelay;       // таймер задержки опроса входов после старта
 GTimer timerPrxSensorFeedbackDelay;
+GTimer timerSensSupplyCheck;
 
-GFilterRA voltage_filter;
+GFilterRA ps_voltage_filter;
+GFilterRA sens_voltage_filter;
 
 EasyNex myNex(Serial1);
 
@@ -90,13 +92,13 @@ void fnOutputsUpdate(void);  // функция обновления выходо
 void fnInputsUpdate(void);   // функция обновления входов
 bool fnEEpromInit(void);     // функция загрузки уставок и проверка eeprom при старте
 bool fnConverterControl(float voltage, uint8_t mode);
-float fnVoltageRead(void);
+float fnPsVoltagRead(void);
 void pj_receiver_function(uint8_t *payload, uint16_t length, const PJON_Packet_Info &packet_info);
 void fnPjonSender(void);
 void fnWaterLevelControl(void);
-bool fnSensorsPowerControl(void);
 bool fnMainPowerControl(void);
 uint8_t fnDebounce(uint8_t sample);
+bool fnSensorsSupplyControl(float voltage);
 
 
 //обработчик прерывания от Timer3 (сброс внешнего WDT)
@@ -162,8 +164,10 @@ void setup() {
 
   delay(1500);
 
-  voltage_filter.setCoef(0.1);           // установка коэффициента фильтрации (0.0... 1.0). Чем меньше, тем плавнее фильтр
-  voltage_filter.setStep(10);            // установка шага фильтрации (мс). Чем меньше, тем резче фильтр
+  ps_voltage_filter.setCoef(0.1);           // установка коэффициента фильтрации (0.0... 1.0). Чем меньше, тем плавнее фильтр
+  ps_voltage_filter.setStep(50);            // установка шага фильтрации (мс). Чем меньше, тем резче фильтр
+  sens_voltage_filter.setCoef(0.1);
+  sens_voltage_filter.setStep(50);
 
   temp_sensors.begin();
   temp_sensors.setResolution(thermometerID_1, TEMPERATURE_PRECISION); 
@@ -187,6 +191,7 @@ void setup() {
   timerStartDelay.setInterval(START_DELAY);
   timerPrxSensorFeedbackDelay.setMode(MANUAL);
   timerPrxSensorFeedbackDelay.setInterval(PRX_SENSOR_FEEDBACK_DELAY);
+  timerSensSupplyCheck.setMode(MANUAL);
  
   fnMenuStaticDataUpdate();
 
@@ -1338,15 +1343,29 @@ bool fnConverterControl(float voltage, uint8_t mode){
 }
 //*****************************************************************************************
 
-// Analog read 
-float fnVoltageRead(void){
+// Analog read power supply
+float fnPsVoltagRead(void){
 
       float voltage;
-     // voltage =  (analogRead(SUPPLY_VOLTAGE_INPUT) * DIVISION_RATIO_VOLTAGE_INPUT); // 
-     voltage = ( voltage_filter.filtered(analogRead(SUPPLY_VOLTAGE_INPUT) - 127 + setpoints_data.voltage_correction) * DIVISION_RATIO_VOLTAGE_INPUT); //
+     // voltage =  ((analogRead(SUPPLY_VOLTAGE_INPUT)- 127 + setpoints_data.voltage_correction) * DIVISION_RATIO_VOLTAGE_INPUT); // 
+     voltage = ( ps_voltage_filter.filtered(analogRead(SUPPLY_VOLTAGE_INPUT) - 127 + setpoints_data.voltage_correction) * DIVISION_RATIO_VOLTAGE_INPUT); //
+
       return voltage;
 }
 //******************************************************************************************
+
+// Analog read sensors supply
+float fnSensVoltagRead(void){
+
+      float voltage;
+     // voltage =  ((analogRead(SUPPLY_VOLTAGE_INPUT)- 127 + setpoints_data.voltage_correction) * DIVISION_RATIO_VOLTAGE_INPUT); // 
+     voltage = ( sens_voltage_filter.filtered(analogRead(SENSORS_VOLTAGE_INPUT)) * DIVISION_RATIO_VOLTAGE_INPUT); //
+
+      return voltage;
+}
+//******************************************************************************************
+
+
 
 // fnPjonReceiver 
 
@@ -1494,7 +1513,7 @@ float fnVoltageRead(void){
             ModbusRTUServer.holdingRegisterWrite(0x04, main_data.water_level_liter);
 
             ModbusRTUServer.holdingRegisterWrite(0x05, pj_float_sensor_fault_counter);
-            ModbusRTUServer.holdingRegisterWrite(0x06, pj_flow_sensor_fault_counter);
+            ModbusRTUServer.holdingRegisterWrite(0x06, main_data.sensors_supply_voltage * 10);
 
 
             if(timerInputsUpdate.isReady() && timerStartDelay.isReady()) fnInputsUpdate();
@@ -1592,7 +1611,8 @@ float fnVoltageRead(void){
             //*******
             fnWaterLevelControl();
             main_data.main_supply_output_state = fnMainPowerControl();
-            main_data.sensors_supply_output_state = fnSensorsPowerControl();
+            main_data.sensors_supply_output_state = fnSensorsSupplyControl(main_data.sensors_supply_voltage);
+
 
             fnPumpControl();
 
@@ -1661,19 +1681,13 @@ void TaskVoltageMeasurement( void *pvParameters __attribute__((unused)) )
  {
       while (1)
       {
-           main_data.battery_voltage =  fnVoltageRead();
+           main_data.battery_voltage =  fnPsVoltagRead();
+           main_data.sensors_supply_voltage = fnSensVoltagRead();
             
             vTaskDelay(5); // *15 ms 
       }
  }
 //********************************************************************
-
-// Sensors power control + (sleep mode)
-bool fnSensorsPowerControl(void){
-
-      return true;
-}
-//**********************************************************************
 
 //
 void TaskModBusPool( void *pvParameters __attribute__((unused)) )  
@@ -2055,3 +2069,42 @@ bool fnMainPowerControl(void){
 
       }
 //*************************************************************************
+
+// Sensors Supply Control
+
+      bool fnSensorsSupplyControl(float voltage){
+            
+            static uint8_t step = 0;
+            static bool state = false;
+
+            if(timerSensSupplyCheck.isReady()){
+
+                  switch(step){
+            
+                        case 0:
+                              state = true;
+                              timerSensSupplyCheck.setInterval(1000);
+                              step=1;
+                              break;
+
+                        case 1:
+                              if(voltage < 3)step=2;
+                              timerSensSupplyCheck.setInterval(1000);
+                              break;
+
+                        case 2:
+                              state = false;
+                              timerSensSupplyCheck.setInterval(3000);
+                              step=0;
+                              break;
+
+                        default :
+                        break;
+
+                  }                 
+            }
+
+            return state;
+      }
+
+//******************************************************************
