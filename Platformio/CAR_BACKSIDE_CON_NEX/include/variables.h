@@ -45,7 +45,7 @@
   struct Setpoints {                 // структура для уставок         
     uint32_t magic_key;        
     uint8_t pump_off_delay;
-    uint8_t flow_sensor_correction; // 127 - нолевая коррекция
+    uint8_t resistive_sensor_correction; // 0- нолевая коррекция
     uint8_t water_tank_capacity;
     uint8_t water_level_liter;
     uint8_t lowUconverter_off_delay;
@@ -84,6 +84,7 @@
     float inside_temperature;       // температура внутри
     float spare_temperature;       // температура третьего датчика
     float sensors_supply_voltage;  //
+    float res_sensor_resistance;   //
     uint8_t water_level_percent;
     uint8_t water_level_liter;
     bool door_switch_state;        // состояние концевика задней двери

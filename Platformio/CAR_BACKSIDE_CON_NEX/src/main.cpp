@@ -48,6 +48,7 @@ GTimer timerSensSupplyCheck;
 
 GFilterRA ps_voltage_filter;
 GFilterRA sens_voltage_filter;
+GFilterRA resistive_sensor_filter;
 
 EasyNex myNex(Serial1);
 
@@ -99,6 +100,7 @@ void fnWaterLevelControl(void);
 bool fnMainPowerControl(void);
 uint8_t fnDebounce(uint8_t sample);
 bool fnSensorsSupplyControl(float voltage);
+uint16_t fnResSensRead(void);
 
 
 //обработчик прерывания от Timer3 (сброс внешнего WDT)
@@ -168,6 +170,8 @@ void setup() {
   ps_voltage_filter.setStep(50);            // установка шага фильтрации (мс). Чем меньше, тем резче фильтр
   sens_voltage_filter.setCoef(0.1);
   sens_voltage_filter.setStep(50);
+  resistive_sensor_filter.setCoef(0.1);
+  resistive_sensor_filter.setStep(200);
 
   temp_sensors.begin();
   temp_sensors.setResolution(thermometerID_1, TEMPERATURE_PRECISION); 
@@ -523,7 +527,7 @@ void fnMenuDynamicDataUpdate(void){
             case  WATERSET_PAGE:
                                     //обновляем динамические параметры страницы
                                     myNex. writeNum(F("p5n0.val"), setpoints_data.pump_off_delay);
-                                    myNex. writeNum(F("p5n1.val"), setpoints_data.flow_sensor_correction);
+                                    myNex. writeNum(F("p5n1.val"), setpoints_data.resistive_sensor_correction);
                                     myNex. writeNum(F("p5n2.val"), setpoints_data.water_tank_capacity);
                                     myNex. writeNum(F("p5n4.val"), main_data.water_level_liter);
                                     myNex. writeNum(F("p5n3.val"), timerPumpOffDelay.currentTime() * 0.001);
@@ -531,7 +535,7 @@ void fnMenuDynamicDataUpdate(void){
                                     //меняем цвет уставки если значение изменено но не сохранено в EEPROM
                                     if(old_setpoints_data.pump_off_delay != setpoints_data.pump_off_delay)myNex.writeNum(F("p5n0.pco"), YELLOW);
                                     else myNex.writeNum(F("p5n0.pco"), WHITE);
-                                    if(old_setpoints_data.flow_sensor_correction != setpoints_data.flow_sensor_correction)myNex.writeNum(F("p5n1.pco"), YELLOW);
+                                    if(old_setpoints_data.resistive_sensor_correction != setpoints_data.resistive_sensor_correction)myNex.writeNum(F("p5n1.pco"), YELLOW);
                                     else myNex.writeNum(F("p5n1.pco"), WHITE);
                                     if(old_setpoints_data.water_tank_capacity != setpoints_data.water_tank_capacity)myNex.writeNum(F("p5n2.pco"), YELLOW);
                                     else myNex.writeNum(F("p5n2.pco"), WHITE);
@@ -555,7 +559,7 @@ void fnMenuDynamicDataUpdate(void){
                                           myNex.writeNum(F("p5t1.pco"), WHITE);
                                           myNex.writeNum(F("p5t2.pco"), BLUE);
                                           myNex.writeNum(F("p5t3.pco"), WHITE);
-                                          variable_value = &setpoints_data.flow_sensor_correction;
+                                          variable_value = &setpoints_data.resistive_sensor_correction;
                                           var_min_value = 1;
                                           var_max_value = 255;
                                           break;
@@ -1343,7 +1347,7 @@ bool fnConverterControl(float voltage, uint8_t mode){
 }
 //*****************************************************************************************
 
-// Analog read power supply
+// Analog read power supply voltage
 float fnPsVoltagRead(void){
 
       float voltage;
@@ -1354,7 +1358,7 @@ float fnPsVoltagRead(void){
 }
 //******************************************************************************************
 
-// Analog read sensors supply
+// Analog read sensors supply voltage
 float fnSensVoltagRead(void){
 
       float voltage;
@@ -1362,6 +1366,18 @@ float fnSensVoltagRead(void){
      voltage = ( sens_voltage_filter.filtered(analogRead(SENSORS_VOLTAGE_INPUT)) * DIVISION_RATIO_VOLTAGE_INPUT); //
 
       return voltage;
+}
+//******************************************************************************************
+
+// Analog read resestive sensor resistance
+uint16_t fnResSensRead(void){
+
+      uint16_t resistance;
+     
+      resistance = ( resistive_sensor_filter.filtered(analogRead(RESISTIVE_SENSOR)) ); //
+      //map(resistance,45,520,0,216);
+
+      return resistance;
 }
 //******************************************************************************************
 
@@ -1514,6 +1530,7 @@ float fnSensVoltagRead(void){
 
             ModbusRTUServer.holdingRegisterWrite(0x05, pj_float_sensor_fault_counter);
             ModbusRTUServer.holdingRegisterWrite(0x06, main_data.sensors_supply_voltage * 10);
+            ModbusRTUServer.holdingRegisterWrite(0x07, main_data.res_sensor_resistance);
 
 
             if(timerInputsUpdate.isReady() && timerStartDelay.isReady()) fnInputsUpdate();
@@ -1610,10 +1627,12 @@ float fnSensVoltagRead(void){
 
             //*******
             fnWaterLevelControl();
+
             main_data.main_supply_output_state = fnMainPowerControl();
+
             main_data.sensors_supply_output_state = fnSensorsSupplyControl(main_data.sensors_supply_voltage);
 
-
+            main_data.res_sensor_resistance = fnResSensRead();
             fnPumpControl();
 
             fnOutputsUpdate();

@@ -47,7 +47,7 @@ void fnDefaultSetpointsInit(void){
 
     setpoints_data.magic_key = MAGIC_KEY ;        
     setpoints_data.pump_off_delay = 5; // сек
-    setpoints_data.flow_sensor_correction = 0;
+    setpoints_data.resistive_sensor_correction = 0;
     setpoints_data.water_tank_capacity = 35; // литр
     setpoints_data.water_level_liter = 0;
     setpoints_data.lowUconverter_off_delay = 3; // min

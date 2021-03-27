@@ -71,13 +71,14 @@
 #define LOW_WASHER_WATER_LEVEL_INPUT_4      57       //A3
 #define SUPPLY_VOLTAGE_INPUT                A4       //A4
 #define SENSORS_VOLTAGE_INPUT               A5       //A5
+#define RESISTIVE_SENSOR                    A6       //A6
 #define WATER_FLOW_SENSOR                    5       //YF-S201 (пока не используется)
 #define BUTTON_ON_BOARD                     10       // кнопка на плате (пока не используется)
 #define POWER_OK_FROM_ADM705                41       //
 //#define ENCODER_SW							35
 //#define ENCODER_DT							36
 //#define ENCODER_CLK							37
-//#define SENSORS_VOLTAGE_TEST_INPUT			A5  // пока не используется
+
 
 //outputs
 #define WATER_PUMP_OUTPUT_1      22  
