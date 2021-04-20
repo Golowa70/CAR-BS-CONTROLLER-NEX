@@ -3,7 +3,9 @@
 
 #include <Arduino.h>
 
-#define DEBUG_GENERAL 0
+#define DEBUG_GENERAL   1
+#define DEBUG_RTOS      0
+#define DEBUG_ERROR_LOG 1
 
 //colors
 #define WHITE       65535
@@ -11,10 +13,16 @@
 #define BLUE        20510
 #define GREEN       33792
 #define GRAY        27469
+#define RED         57543
+#define BLUE_2         31
+#define CYAN         2831
 
 //timers
 #define TEMP_SENSORS_UPDATE_PERIOD   1000
 #define MENU_UPDATE_PERIOD           500
+#define SENS_SUPPLY_CHECK_PERIOD     500
+#define SENS_SUPPLY_CHECK_TIMES      3
+#define SENS_SUPPLY_CHECK_MIN_V      4
 
 #define NEXTION_BAUD_RATE            115200
 
@@ -31,6 +39,7 @@
 #define ONEWIRESCANNER_PAGE    9
 #define MODBUSSET_PAGE        10
 #define BASESET_PAGE          11
+#define ERROR_LOG_PAGE        0X10
 #define MAX_PAGES             20 
 
 //modes
@@ -41,6 +50,7 @@
 
 //eeprom
 #define EEPROM_SETPOINTS_ADDRESS  0
+#define EEPROM_ERROR_LOG_ADDRES    64
 #define MAGIC_KEY                 0x123456//7   //ключь для определения записаны ли уставки в память EEPROM
 //#define MAGIC_KEY_PART_1          0x1234567   // вариант с двумя частями один в начале второй в конце
 //#define MAGIC_KEY_PART_2          0x7654321
@@ -99,8 +109,8 @@
 
 
 #define VERSION "ver 1.0"
-#define DIVISION_RATIO_VOLTAGE_INPUT  0.0208    // разрешение 0.0025  уможить на коэфициент резистивного делителя 8.2
-
+#define DIVISION_RATIO_VOLTAGE_INPUT  0.0208     // разрешение 0.0025  уможить на коэфициент резистивного делителя 8.2
+#define DIVISION_RATIO_SENS_SUPPLY_INPUT  0.027  //
 
 #define SECOND       1000           //ms  секунда
 #define MINUTE       60000          //ms  минута

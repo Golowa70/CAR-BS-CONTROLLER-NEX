@@ -14,10 +14,10 @@ Comment3 ""
 Comment4 ""
 $EndDescr
 $Comp
-L Transistor_Array:ULN2003A U6
+L Car_bs_controller_nex_mega-rescue:ULN2003A-Transistor_Array U4
 U 1 1 6003689D
 P 3900 2650
-F 0 "U6" H 3900 3317 50  0000 C CNN
+F 0 "U4" H 3900 3317 50  0000 C CNN
 F 1 "ULN2003A" H 3900 3226 50  0000 C CNN
 F 2 "Package_SO:SOIC-16_3.9x9.9mm_P1.27mm" H 3950 2100 50  0001 L CNN
 F 3 "http://www.ti.com/lit/ds/symlink/uln2003a.pdf" H 4000 2450 50  0001 C CNN
@@ -31,7 +31,7 @@ Wire Wire Line
 Wire Wire Line
 	6100 2650 5800 2650
 $Comp
-L power:+12V #PWR055
+L Car_bs_controller_nex_mega-rescue:+12V-power #PWR055
 U 1 1 6003D5D2
 P 4300 1850
 F 0 "#PWR055" H 4300 1700 50  0001 C CNN
@@ -76,7 +76,7 @@ CONVERTER_RELAY_NO
 Wire Wire Line
 	6750 3750 6200 3750
 $Comp
-L power:GND #PWR054
+L Car_bs_controller_nex_mega-rescue:GND-power #PWR054
 U 1 1 60076725
 P 3900 3400
 F 0 "#PWR054" H 3900 3150 50  0001 C CNN
@@ -121,34 +121,10 @@ Wire Wire Line
 Connection ~ 4300 2050
 Wire Wire Line
 	4300 2050 4300 2250
-$Comp
-L Car_bs_controller_nex_mega-rescue:1393217-4-1393217-4 K2
-U 1 1 6001DC1E
-P 7150 3550
-F 0 "K2" H 7100 4017 50  0000 C CNN
-F 1 "1393217-4" H 7100 3926 50  0000 C CNN
-F 2 "RELAY_1393217-4" H 7150 3550 50  0001 L BNN
-F 3 "" H 7150 3550 50  0001 L BNN
-F 4 "1393217-4" H 7150 3550 50  0001 L BNN "Comment"
-	1    7150 3550
-	1    0    0    -1  
-$EndComp
 Wire Wire Line
 	6750 3350 6350 3350
 Wire Wire Line
 	8950 3750 8200 3750
-$Comp
-L Car_bs_controller_nex_mega-rescue:1393217-4-1393217-4 K3
-U 1 1 60025037
-P 7150 4850
-F 0 "K3" H 7100 5317 50  0000 C CNN
-F 1 "1393217-4" H 7100 5226 50  0000 C CNN
-F 2 "RELAY_1393217-4" H 7150 4850 50  0001 L BNN
-F 3 "" H 7150 4850 50  0001 L BNN
-F 4 "1393217-4" H 7150 4850 50  0001 L BNN "Comment"
-	1    7150 4850
-	1    0    0    -1  
-$EndComp
 Wire Wire Line
 	6350 4650 6350 3350
 Wire Wire Line
@@ -163,24 +139,8 @@ Wire Wire Line
 	6350 3350 6350 2050
 Connection ~ 6350 3350
 Connection ~ 6350 2050
-Wire Wire Line
-	6350 2050 6750 2050
-Wire Wire Line
-	7450 2450 8250 2450
 $Comp
-L Car_bs_controller_nex_mega-rescue:1393217-4-1393217-4 K1
-U 1 1 6000C624
-P 7150 2250
-F 0 "K1" H 7100 2717 50  0000 C CNN
-F 1 "1393217-4" H 7100 2626 50  0000 C CNN
-F 2 "RELAY_1393217-4" H 7150 2250 50  0001 L BNN
-F 3 "" H 7150 2250 50  0001 L BNN
-F 4 "1393217-4" H 7150 2250 50  0001 L BNN "Comment"
-	1    7150 2250
-	1    0    0    -1  
-$EndComp
-$Comp
-L Device:Varistor RV4
+L Car_bs_controller_nex_mega-rescue:Varistor-Device RV4
 U 1 1 6001EA98
 P 8250 2300
 F 0 "RV4" H 8353 2346 50  0000 L CNN
@@ -190,20 +150,13 @@ F 3 "~" H 8250 2300 50  0001 C CNN
 	1    8250 2300
 	1    0    0    -1  
 $EndComp
-Connection ~ 8250 2450
 Wire Wire Line
 	8250 2450 8950 2450
-Wire Wire Line
-	8250 2150 7550 2150
-Wire Wire Line
-	7550 2150 7550 2250
-Wire Wire Line
-	7550 2250 7450 2250
 Wire Wire Line
 	8950 2150 8250 2150
 Connection ~ 8250 2150
 $Comp
-L Device:Varistor RV2
+L Car_bs_controller_nex_mega-rescue:Varistor-Device RV2
 U 1 1 60020EDF
 P 8200 3600
 F 0 "RV2" H 8303 3646 50  0000 L CNN
@@ -214,7 +167,7 @@ F 3 "~" H 8200 3600 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L Device:Varistor RV3
+L Car_bs_controller_nex_mega-rescue:Varistor-Device RV3
 U 1 1 60021A69
 P 8200 4900
 F 0 "RV3" H 8303 4946 50  0000 L CNN
@@ -224,17 +177,8 @@ F 3 "~" H 8200 4900 50  0001 C CNN
 	1    8200 4900
 	1    0    0    -1  
 $EndComp
-Connection ~ 8200 3750
-Wire Wire Line
-	8200 3750 7450 3750
 Wire Wire Line
 	8950 3450 8200 3450
-Wire Wire Line
-	8200 3450 7550 3450
-Wire Wire Line
-	7550 3450 7550 3550
-Wire Wire Line
-	7550 3550 7450 3550
 Connection ~ 8200 3450
 Connection ~ 8200 5050
 Wire Wire Line
@@ -243,8 +187,6 @@ Wire Wire Line
 	8850 4750 8200 4750
 Wire Wire Line
 	8200 4750 7450 4750
-Wire Wire Line
-	7450 4750 7450 4850
 Connection ~ 8200 4750
 Wire Wire Line
 	4600 4350 4600 2750
@@ -265,10 +207,10 @@ Wire Wire Line
 Wire Wire Line
 	4300 2050 4900 2050
 $Comp
-L Simulation_SPICE:DIODE D38
+L Car_bs_controller_nex_mega-rescue:DIODE-Simulation_SPICE D37
 U 1 1 60039BB9
 P 4550 4750
-F 0 "D38" H 4550 4850 50  0000 C CNN
+F 0 "D37" H 4550 4850 50  0000 C CNN
 F 1 "SS14" H 4500 4950 50  0000 C CNN
 F 2 "Diode_SMD:D_SMA" H 4550 4750 50  0001 C CNN
 F 3 "~" H 4550 4750 50  0001 C CNN
@@ -313,12 +255,12 @@ Wire Wire Line
 Wire Wire Line
 	4300 2450 5100 2450
 $Comp
-L Device:LED D?
+L Car_bs_controller_nex_mega-rescue:LED-Device D?
 U 1 1 6011C2E4
 P 5100 3250
 AR Path="/5FF96CA3/6011C2E4" Ref="D?"  Part="1" 
-AR Path="/5FF96DB0/6011C2E4" Ref="D39"  Part="1" 
-F 0 "D39" V 5200 3300 50  0000 L CNN
+AR Path="/5FF96DB0/6011C2E4" Ref="D38"  Part="1" 
+F 0 "D38" V 5200 3300 50  0000 L CNN
 F 1 "LED_K1" V 5450 3100 50  0000 L CNN
 F 2 "LED_SMD:LED_0603_1608Metric" H 5100 3250 50  0001 C CNN
 F 3 "~" H 5100 3250 50  0001 C CNN
@@ -326,13 +268,13 @@ F 3 "~" H 5100 3250 50  0001 C CNN
 	0    -1   1    0   
 $EndComp
 $Comp
-L Device:R R?
+L Car_bs_controller_nex_mega-rescue:R-Device R?
 U 1 1 6011C2EA
 P 5100 2900
 AR Path="/5FF96CA3/6011C2EA" Ref="R?"  Part="1" 
-AR Path="/5FF96DB0/6011C2EA" Ref="R61"  Part="1" 
-F 0 "R61" H 5170 2946 50  0000 L CNN
-F 1 "2k2" H 5170 2855 50  0000 L CNN
+AR Path="/5FF96DB0/6011C2EA" Ref="R46"  Part="1" 
+F 0 "R46" H 5170 2946 50  0000 L CNN
+F 1 "10k" H 5170 2855 50  0000 L CNN
 F 2 "Resistor_SMD:R_0603_1608Metric" V 5030 2900 50  0001 C CNN
 F 3 "~" H 5100 2900 50  0001 C CNN
 	1    5100 2900
@@ -343,12 +285,12 @@ Wire Wire Line
 Wire Wire Line
 	5100 3500 5100 3400
 $Comp
-L Device:LED D?
+L Car_bs_controller_nex_mega-rescue:LED-Device D?
 U 1 1 60124D70
 P 5450 3250
 AR Path="/5FF96CA3/60124D70" Ref="D?"  Part="1" 
-AR Path="/5FF96DB0/60124D70" Ref="D40"  Part="1" 
-F 0 "D40" V 5550 3300 50  0000 L CNN
+AR Path="/5FF96DB0/60124D70" Ref="D39"  Part="1" 
+F 0 "D39" V 5550 3300 50  0000 L CNN
 F 1 "LED_K2" V 5800 3100 50  0000 L CNN
 F 2 "LED_SMD:LED_0603_1608Metric" H 5450 3250 50  0001 C CNN
 F 3 "~" H 5450 3250 50  0001 C CNN
@@ -356,13 +298,13 @@ F 3 "~" H 5450 3250 50  0001 C CNN
 	0    -1   1    0   
 $EndComp
 $Comp
-L Device:R R?
+L Car_bs_controller_nex_mega-rescue:R-Device R?
 U 1 1 60124D76
 P 5450 2900
 AR Path="/5FF96CA3/60124D76" Ref="R?"  Part="1" 
-AR Path="/5FF96DB0/60124D76" Ref="R62"  Part="1" 
-F 0 "R62" H 5520 2946 50  0000 L CNN
-F 1 "2k2" H 5520 2855 50  0000 L CNN
+AR Path="/5FF96DB0/60124D76" Ref="R47"  Part="1" 
+F 0 "R47" H 5520 2946 50  0000 L CNN
+F 1 "10k" H 5520 2855 50  0000 L CNN
 F 2 "Resistor_SMD:R_0603_1608Metric" V 5380 2900 50  0001 C CNN
 F 3 "~" H 5450 2900 50  0001 C CNN
 	1    5450 2900
@@ -373,12 +315,12 @@ Wire Wire Line
 Wire Wire Line
 	5450 3500 5450 3400
 $Comp
-L Device:LED D?
+L Car_bs_controller_nex_mega-rescue:LED-Device D?
 U 1 1 6012B195
 P 5800 3250
 AR Path="/5FF96CA3/6012B195" Ref="D?"  Part="1" 
-AR Path="/5FF96DB0/6012B195" Ref="D41"  Part="1" 
-F 0 "D41" V 5900 3300 50  0000 L CNN
+AR Path="/5FF96DB0/6012B195" Ref="D40"  Part="1" 
+F 0 "D40" V 5900 3300 50  0000 L CNN
 F 1 "LED_K3" V 6150 3100 50  0000 L CNN
 F 2 "LED_SMD:LED_0603_1608Metric" H 5800 3250 50  0001 C CNN
 F 3 "~" H 5800 3250 50  0001 C CNN
@@ -386,13 +328,13 @@ F 3 "~" H 5800 3250 50  0001 C CNN
 	0    -1   1    0   
 $EndComp
 $Comp
-L Device:R R?
+L Car_bs_controller_nex_mega-rescue:R-Device R?
 U 1 1 6012B19B
 P 5800 2900
 AR Path="/5FF96CA3/6012B19B" Ref="R?"  Part="1" 
-AR Path="/5FF96DB0/6012B19B" Ref="R63"  Part="1" 
-F 0 "R63" H 5870 2946 50  0000 L CNN
-F 1 "2k2" H 5870 2855 50  0000 L CNN
+AR Path="/5FF96DB0/6012B19B" Ref="R48"  Part="1" 
+F 0 "R48" H 5870 2946 50  0000 L CNN
+F 1 "10k" H 5870 2855 50  0000 L CNN
 F 2 "Resistor_SMD:R_0603_1608Metric" V 5730 2900 50  0001 C CNN
 F 3 "~" H 5800 2900 50  0001 C CNN
 	1    5800 2900
@@ -428,4 +370,104 @@ Wire Wire Line
 Connection ~ 5800 2650
 Wire Wire Line
 	5800 2650 4300 2650
+Wire Wire Line
+	8250 2150 7550 2150
+Wire Wire Line
+	8200 3450 7550 3450
+Wire Wire Line
+	6350 2050 6750 2050
+$Comp
+L ab2_relay:SRA-12VDC-CL REL2
+U 1 1 609D3C8A
+P 7100 4900
+F 0 "REL2" H 7100 5277 60  0000 C CNN
+F 1 "SRA-12VDC-CL" V 6700 4950 60  0000 C CNN
+F 2 "ab2_relay:AB2_SRA-12VDC-CL" V 6550 4850 60  0000 C CNN
+F 3 "" H 7205 4835 60  0000 C CNN
+	1    7100 4900
+	0    -1   1    0   
+$EndComp
+Wire Wire Line
+	7450 4750 7450 4650
+Wire Wire Line
+	7450 4650 7150 4650
+Wire Wire Line
+	7450 5050 7450 5150
+Wire Wire Line
+	7450 5150 7200 5150
+Wire Wire Line
+	7000 5150 6750 5150
+Wire Wire Line
+	6750 5150 6750 5050
+Wire Wire Line
+	7000 4650 7000 4600
+Wire Wire Line
+	7000 4600 6750 4600
+Wire Wire Line
+	6750 4600 6750 4650
+NoConn ~ 7100 5150
+$Comp
+L ab2_relay:SRA-12VDC-CL REL1
+U 1 1 609F4C66
+P 7100 3600
+F 0 "REL1" H 7100 3977 60  0000 C CNN
+F 1 "SRA-12VDC-CL" V 6700 3650 60  0000 C CNN
+F 2 "ab2_relay:AB2_SRA-12VDC-CL" V 6550 3500 60  0000 C CNN
+F 3 "" H 7205 3535 60  0000 C CNN
+	1    7100 3600
+	0    -1   1    0   
+$EndComp
+$Comp
+L ab2_relay:SRA-12VDC-CL REL3
+U 1 1 609F846A
+P 7150 2250
+F 0 "REL3" H 7150 2627 60  0000 C CNN
+F 1 "SRA-12VDC-CL" V 6750 2300 60  0000 C CNN
+F 2 "ab2_relay:AB2_SRA-12VDC-CL" V 6600 2250 60  0000 C CNN
+F 3 "" H 7255 2185 60  0000 C CNN
+	1    7150 2250
+	0    -1   1    0   
+$EndComp
+Wire Wire Line
+	7550 2150 7550 2000
+Wire Wire Line
+	7550 2000 7200 2000
+Wire Wire Line
+	8250 2450 7550 2450
+Wire Wire Line
+	7550 2450 7550 2500
+Wire Wire Line
+	7550 2500 7250 2500
+Connection ~ 8250 2450
+Wire Wire Line
+	7050 2000 6750 2000
+Wire Wire Line
+	6750 2000 6750 2050
+Wire Wire Line
+	7050 2500 6750 2500
+Wire Wire Line
+	6750 2500 6750 2450
+NoConn ~ 7150 2500
+Wire Wire Line
+	7550 3450 7550 3350
+Wire Wire Line
+	7550 3350 7150 3350
+Wire Wire Line
+	8200 3750 7550 3750
+Wire Wire Line
+	7550 3750 7550 3850
+Wire Wire Line
+	7550 3850 7200 3850
+Connection ~ 8200 3750
+Wire Wire Line
+	7000 3850 6750 3850
+Wire Wire Line
+	6750 3850 6750 3750
+Wire Wire Line
+	7000 3350 7000 3300
+Wire Wire Line
+	7000 3300 6750 3300
+Wire Wire Line
+	6750 3300 6750 3350
+NoConn ~ 7100 3850
 $EndSCHEMATC
