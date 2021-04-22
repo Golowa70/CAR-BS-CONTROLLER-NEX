@@ -126,14 +126,12 @@ Wire Wire Line
 	3400 1150 3400 1050
 Wire Wire Line
 	2650 1050 2850 1050
-Text GLabel 1850 1050 0    50   Input ~ 0
+Text GLabel 1300 1050 0    50   Input ~ 0
 +5v_FROM_MCU
 Wire Wire Line
 	2850 1050 3400 1050
 Wire Wire Line
 	2350 1050 2200 1050
-Wire Wire Line
-	1850 1050 2200 1050
 Connection ~ 2200 1050
 Wire Wire Line
 	4000 1050 3400 1050
@@ -853,4 +851,19 @@ F 3 "~" H 7900 5250 50  0001 C CNN
 	1    7900 5250
 	1    0    0    -1  
 $EndComp
+$Comp
+L Device:L L4
+U 1 1 607FD4F7
+P 1600 1050
+F 0 "L4" V 1419 1050 50  0000 C CNN
+F 1 "FB" V 1510 1050 50  0000 C CNN
+F 2 "Inductor_SMD:L_1206_3216Metric_Pad1.42x1.75mm_HandSolder" H 1600 1050 50  0001 C CNN
+F 3 "~" H 1600 1050 50  0001 C CNN
+	1    1600 1050
+	0    -1   -1   0   
+$EndComp
+Wire Wire Line
+	1750 1050 2200 1050
+Wire Wire Line
+	1450 1050 1300 1050
 $EndSCHEMATC
