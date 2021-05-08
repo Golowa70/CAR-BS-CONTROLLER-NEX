@@ -38,17 +38,6 @@ F 3 "~" H 3700 4350 50  0001 C CNN
 	-1   0    0    1   
 $EndComp
 $Comp
-L Car_bs_controller_nex_mega-rescue:D-Device D4
-U 1 1 5FFE57B9
-P 3300 1600
-F 0 "D4" H 3300 1817 50  0000 C CNN
-F 1 "SS54" H 3300 1726 50  0000 C CNN
-F 2 "Diode_SMD:D_SMB" H 3300 1600 50  0001 C CNN
-F 3 "~" H 3300 1600 50  0001 C CNN
-	1    3300 1600
-	-1   0    0    -1  
-$EndComp
-$Comp
 L Car_bs_controller_nex_mega-rescue:C-Device C10
 U 1 1 5FFAF314
 P 8950 1800
@@ -811,4 +800,15 @@ Wire Wire Line
 	1200 1300 2300 1300
 Wire Wire Line
 	2300 1300 2300 1600
+$Comp
+L Car_bs_controller_nex_mega-rescue:D-Device D4
+U 1 1 5FFE57B9
+P 3300 1600
+F 0 "D4" H 3300 1817 50  0000 C CNN
+F 1 "SS54" H 3300 1726 50  0000 C CNN
+F 2 "Diode_SMD:D_SMB" H 3300 1600 50  0001 C CNN
+F 3 "~" H 3300 1600 50  0001 C CNN
+	1    3300 1600
+	-1   0    0    -1  
+$EndComp
 $EndSCHEMATC
