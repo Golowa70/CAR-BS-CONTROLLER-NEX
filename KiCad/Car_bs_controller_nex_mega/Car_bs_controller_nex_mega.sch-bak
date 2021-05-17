@@ -32,7 +32,7 @@ F0 "Mega2560" 50
 F1 "Mega2560.sch" 50
 $EndSheet
 $Sheet
-S 4050 2650 1950 900 
+S 3900 2650 1950 900 
 U 5FF96CA3
 F0 "Links" 50
 F1 "Links.sch" 50

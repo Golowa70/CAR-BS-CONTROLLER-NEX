@@ -17,7 +17,7 @@ void fnIOInit(void) {
         pinMode(BUTTON_ON_BOARD, INPUT_PULLUP);//
         pinMode(POWER_OK_FROM_ADM705, INPUT_PULLUP);//
 
-        //analogReference(INTERNAL2V56);      // внутренний исочник опорного напряжения 2.56в
+       // analogReference(INTERNAL2V56);      // внутренний исочник опорного напряжения 2.56в
         analogReference(EXTERNAL);          // внешний исочник опорного напряжения 2.5в(TL431)
 
     //outputs declaration

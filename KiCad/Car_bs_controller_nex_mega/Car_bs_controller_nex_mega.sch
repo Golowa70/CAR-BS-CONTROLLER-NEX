@@ -4,7 +4,7 @@ EELAYER END
 $Descr A4 11693 8268
 encoding utf-8
 Sheet 1 8
-Title "Car bs controller nex mega"
+Title "Car bs controller nex mega v3"
 Date "2021-01-09"
 Rev ""
 Comp ""

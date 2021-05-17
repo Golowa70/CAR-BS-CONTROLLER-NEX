@@ -18,11 +18,12 @@
 #define CYAN         2831
 
 //timers
-#define TEMP_SENSORS_UPDATE_PERIOD   1000
-#define MENU_UPDATE_PERIOD           500
-#define SENS_SUPPLY_CHECK_PERIOD     500
-#define SENS_SUPPLY_CHECK_TIMES      3
+#define TEMP_SENSORS_UPDATE_PERIOD   1000   //ms
+#define MENU_UPDATE_PERIOD           500    //ms
+#define SENS_SUPPLY_CHECK_PERIOD     100    //ms
+#define SENS_SUPPLY_CHECK_TIMES      5
 #define SENS_SUPPLY_CHECK_MIN_V      4
+#define SENS_SUPPLY_CHECK_START_DELAY 2000  //ms  
 
 #define NEXTION_BAUD_RATE            115200
 
@@ -109,8 +110,9 @@
 
 
 #define VERSION "ver 1.0"
-#define DIVISION_RATIO_VOLTAGE_INPUT  0.0208     // разрешение 0.0025  уможить на коэфициент резистивного делителя 8.2
-#define DIVISION_RATIO_SENS_SUPPLY_INPUT  0.027  //
+#define DIVISION_RATIO_VOLTAGE_INPUT  0.0208  // разрешение 0.0025 уможить на коэфициент деления предусилителя 4.85(или делителя)
+#define DIVISION_RATIO_SENS_SUPPLY_INPUT  0.0102  // разрешение 0.0025 уможить на коэфициент деления предусилителя 4.16
+#define DIVISION_RATIO_RESIST_SENSOR  0.278
 
 #define SECOND       1000           //ms  секунда
 #define MINUTE       60000          //ms  минута

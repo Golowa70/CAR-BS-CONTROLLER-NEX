@@ -95,6 +95,7 @@ struct MyData
   bool wdt_reset_output_state;
   bool screen_sleep_mode;
   bool low_washer_water_level;
+  bool flag_system_started;
   uint16_t mb_rates[6] = {4800, 7200, 9600, 19200, 38400, 57600};
 } main_data;
 

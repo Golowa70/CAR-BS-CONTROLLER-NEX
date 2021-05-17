@@ -91,6 +91,7 @@ bool fnEEpromInit(void);             // функция загрузки уста
 bool fnReadErrorLogFromEeprom(void); //
 bool fnConverterControl(float voltage, uint8_t mode);
 float fnPsVoltagRead(void);
+float fnSensVoltagRead(void);
 void pj_receiver_function(uint8_t *payload, uint16_t length, const PJON_Packet_Info &packet_info);
 void fnPjonSender(void);
 void fnWaterLevelControl(void);
@@ -192,6 +193,7 @@ void setup()
       timerPrxSensorFeedbackDelay.setMode(MANUAL);
       timerPrxSensorFeedbackDelay.setInterval(PRX_SENSOR_FEEDBACK_DELAY);
       timerSensSupplyCheck.setMode(MANUAL);
+      timerSensSupplyCheck.setInterval(SENS_SUPPLY_CHECK_START_DELAY);
 
       fnMenuStaticDataUpdate();
 
@@ -316,6 +318,8 @@ void setup()
       }
 
       //rtttl :: begin (BUZZER, melody_2);   // пиликаем при старте
+
+      main_data.flag_system_started = true;
 }
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -1273,6 +1277,7 @@ void trigger8()
 void trigger9()
 {
       memset(&ErrorLog, 0, sizeof(Log));
+      EEPROM.updateBlock(EEPROM_ERROR_LOG_ADDRES, ErrorLog);
 }
 //******************************************************************************
 
@@ -1506,11 +1511,10 @@ float fnSensVoltagRead(void)
 // Analog read resestive sensor resistance
 uint16_t fnResSensRead(void)
 {
-
       uint16_t resistance;
 
-      resistance = (resistive_sensor_filter.filtered(analogRead(RESISTIVE_SENSOR))); //
-      //map(resistance,45,520,0,216);
+      resistance = (resistive_sensor_filter.filtered(analogRead(RESISTIVE_SENSOR)) * DIVISION_RATIO_RESIST_SENSOR);
+      //map(resistance,3,290,0,192);
 
       return resistance;
 }
@@ -1786,6 +1790,7 @@ void TaskLoop(void *pvParameters __attribute__((unused))) // This is a Task.
             main_data.sensors_supply_output_state = fnSensorsSupplyControl(main_data.sensors_supply_voltage);
 
             main_data.res_sensor_resistance = fnResSensRead();
+
             fnPumpControl();
 
             fnOutputsUpdate();
@@ -2127,7 +2132,7 @@ void TaskDebug(void *pvParameters)
       {
             //timers
             Serial.print F("timerPumpOffDelay:  ");
-            Serial.println(timerPumpOffDelay.currentTime() / 1000);
+            Serial.println(timerPumpOffDelay.currentTime() / 1000); 
             Serial.print F("timerLowUConverterOffDelay:  ");
             Serial.println(timerLowUConverterOffDelay.currentTime() / 1000);
             Serial.print F("timerConverterShutdownDelay:  ");
@@ -2160,28 +2165,25 @@ void TaskDebug(void *pvParameters)
             Serial.println();
 
             //values
+            
             Serial.print F("main_data.battery_voltage:  ");
             Serial.println(main_data.battery_voltage * 10);
-
-            Serial.print("main_data.battery_voltage:  ");
-            Serial.println(main_data.battery_voltage * 10);
-            Serial.print("main_data.inside_temperature:  ");
+            Serial.print F("main_data.inside_temperature:  ");
             Serial.println(main_data.inside_temperature * 10);
-            Serial.print("main_data.outside_temperature:  ");
+            Serial.print F("main_data.outside_temperature:  ");
             Serial.println(main_data.outside_temperature * 10);
-            Serial.print("main_data.water_level_percent:  ");
+            Serial.print F("main_data.water_level_percent:  ");
             Serial.println(main_data.water_level_percent);
-            Serial.print("main_data.water_level_liter:  ");
+            Serial.print F("main_data.water_level_liter:  ");
             Serial.println(main_data.water_level_liter);
-            Serial.print("main_data.sensors_supply_voltage:  ");
+            Serial.print F("main_data.sensors_supply_voltage:  ");
             Serial.println(main_data.sensors_supply_voltage * 10);
-            Serial.print("main_data.res_sensor_resistance:  ");
+            Serial.print F("main_data.res_sensor_resistance:  ");
             Serial.println(main_data.res_sensor_resistance);
 
-            Serial.print("myNex.currentPageId:  ");
+            Serial.print F("myNex.currentPageId:  ");
             Serial.println(myNex.currentPageId);
 
-            Serial.println();
             Serial.println();
 
 #if (DEBUG_RTOS)
@@ -2274,7 +2276,6 @@ void TaskDebug(void *pvParameters)
             Serial.println(ErrorLog.ds18b20_error_cnt);
 
             Serial.println();
-            Serial.println();
 #endif
 
             vTaskDelay(5000 / portTICK_PERIOD_MS);
@@ -2307,57 +2308,61 @@ bool fnSensorsSupplyControl(float voltage)
 {
       static uint8_t step = 0;
       static uint8_t sens_supply_check_cnt = 0;
-      static bool state = false;
+      static bool state = true;
 
-      if (timerSensSupplyCheck.isReady())
-      {
-            switch (step)
+      
+            if (timerSensSupplyCheck.isReady())
             {
-
-            case 0:
-                  state = true;
-                  timerSensSupplyCheck.setInterval(SENS_SUPPLY_CHECK_PERIOD);
-                  step = 1;
-                  break;
-
-            case 1:
-                  if (voltage < SENS_SUPPLY_CHECK_MIN_V)
+                  switch (step)
                   {
-                        sens_supply_check_cnt++;
+
+                  case 0:
+                        state = true;
                         timerSensSupplyCheck.setInterval(SENS_SUPPLY_CHECK_PERIOD);
+                        step = 1;
+                        break;
+
+                  case 1:
+                        if (voltage < SENS_SUPPLY_CHECK_MIN_V)
+                        {
+                              sens_supply_check_cnt++;
+                              timerSensSupplyCheck.setInterval(SENS_SUPPLY_CHECK_PERIOD);
+                        }
+                        else
+                        {
+                              if (sens_supply_check_cnt)
+                                    sens_supply_check_cnt--;
+                        }
+
+                        if (sens_supply_check_cnt > SENS_SUPPLY_CHECK_TIMES)
+                              step = 2;
+                        break;
+
+                  case 2:
+                        state = false;
+                        flag_sens_supply_fault = true;
+                        ErrorLog.sens_supply_error_cnt++;
+                        EEPROM.updateBlock(EEPROM_ERROR_LOG_ADDRES, ErrorLog);
+                        timerSensSupplyCheck.setInterval(SENS_SUPPLY_CHECK_PERIOD * 3);
+                        step = 3;
+                        break;
+
+                  case 3:
+                        if (!flag_sens_supply_fault)
+                        {
+                              state = true;
+                              step = 0;
+                              sens_supply_check_cnt = 0;
+                        }
+                        
+                        timerSensSupplyCheck.setInterval(SENS_SUPPLY_CHECK_START_DELAY);
+                        break;
+
+                  default:
+                        break;
                   }
-                  else
-                  {
-                        if (sens_supply_check_cnt)
-                              sens_supply_check_cnt--;
-                  }
-
-                  if (sens_supply_check_cnt > SENS_SUPPLY_CHECK_TIMES)
-                        step = 2;
-                  break;
-
-            case 2:
-                  state = false;
-                  flag_sens_supply_fault = true;
-                  ErrorLog.sens_supply_error_cnt++;
-                  EEPROM.updateBlock(EEPROM_ERROR_LOG_ADDRES, ErrorLog);
-                  timerSensSupplyCheck.setInterval(SENS_SUPPLY_CHECK_PERIOD * 3);
-                  step = 3;
-                  break;
-
-            case 3:
-                  if (!flag_sens_supply_fault)
-                  {
-                        step = 0;
-                        sens_supply_check_cnt = 0;
-                  }
-                  timerSensSupplyCheck.setInterval(SENS_SUPPLY_CHECK_PERIOD);
-                  break;
-
-            default:
-                  break;
             }
-      }
+      
 
       return state;
 }
