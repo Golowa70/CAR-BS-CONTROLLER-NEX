@@ -76,27 +76,26 @@ struct Setpoints
 //*********** Main data *******************************************************************************
 struct MyData
 {
-  float battery_voltage;        // напряжени бортсети ( например 124 это 12.4в)
-  float outside_temperature;    //  наружная температура
-  float inside_temperature;     // температура внутри
-  float spare_temperature;      // температура третьего датчика
-  float sensors_supply_voltage; //
-  float res_sensor_resistance;  //
-  uint8_t water_level_percent;
-  uint8_t water_level_liter;
-  bool door_switch_state;      // состояние концевика задней двери
-  bool proximity_sensor_state; // состояние датчика приближения
-  bool ignition_switch_state;
-  bool converter_output_state; // состояние выхода управления инвертором 12/220в
-  bool light_output_state;     //состояние выхода освещения
-  bool pump_output_state;      //состояние выхода насоса
-  bool sensors_supply_output_state;
-  bool main_supply_output_state;
-  bool wdt_reset_output_state;
-  bool screen_sleep_mode;
-  bool low_washer_water_level;
-  bool flag_system_started;
-  uint16_t mb_rates[6] = {4800, 7200, 9600, 19200, 38400, 57600};
+  float battery_voltage;          // напряжени бортсети ( например 124 это 12.4в)
+  float outside_temperature;      //  наружная температура
+  float inside_temperature;       // температура внутри
+  float spare_temperature;        // температура третьего датчика(пока не используется)
+  float sensors_supply_voltage;   // напряжение питания датчиков 5в
+  float res_sensor_resistance;    // сопротивление резистивного датчика
+  uint8_t water_level_percent;    // уровень воды в процентах
+  uint8_t water_level_liter;      // уровень воды в литрах
+  bool door_switch_state;         // состояние концевика задней двери
+  bool proximity_sensor_state;    // состояние датчика приближения
+  bool ignition_switch_state;     // состояние входа зажигания
+  bool converter_output_state;    // состояние выхода управления инвертором 12/220в
+  bool light_output_state;        //состояние выхода освещения
+  bool pump_output_state;         //состояние выхода насоса
+  bool sensors_supply_output_state; // состояние выхода управления питанием сенсоров 5в
+  bool main_supply_output_state;  // состояние выхода управления общим питанием 7.5в
+  bool wdt_reset_output_state;    //состояние выхода сброса внешнего WDT
+  bool screen_sleep_mode;         // флаг спящего режима экрана Nextion
+  bool low_washer_water_level;    // низкий уровень воды в бачке омывателя
+  uint16_t mb_rates[6] = {4800, 7200, 9600, 19200, 38400, 57600};   // скорость связи по протоколу ModBus
 } main_data;
 
 //****** end main data **************************************************************
@@ -135,10 +134,10 @@ bool flag_error_present = false;
 //********* ERROR LOG ***************************************************************
 struct Log
 {
-  uint16_t sens_supply_error_cnt;
+  uint16_t sens_supply_error_cnt;      // счетчик ошбок питания сенсоров
   uint16_t pj_float_sensor_error_cnt;  // счетчик запросов без ответа датчика уровня
   uint16_t pj_flow_sensor_error_cnt;   // счетчик запросов без ответа датчика протечки
-  uint16_t ds18b20_error_cnt;
+  uint16_t ds18b20_error_cnt;          // счетчик ошибок шины 1Wire
 } ErrorLog;
 
 #endif

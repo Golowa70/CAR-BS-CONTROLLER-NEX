@@ -319,7 +319,6 @@ void setup()
 
       //rtttl :: begin (BUZZER, melody_2);   // пиликаем при старте
 
-      main_data.flag_system_started = true;
 }
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -334,7 +333,6 @@ void loop()
 //menu static data update
 void fnMenuStaticDataUpdate(void)
 {
-
       switch (myNex.currentPageId)
       {
 
@@ -2355,7 +2353,7 @@ bool fnSensorsSupplyControl(float voltage)
                               sens_supply_check_cnt = 0;
                         }
                         
-                        timerSensSupplyCheck.setInterval(SENS_SUPPLY_CHECK_START_DELAY);
+                        timerSensSupplyCheck.setInterval(SENS_SUPPLY_CHECK_START_DELAY); // задержка как при старте
                         break;
 
                   default:
