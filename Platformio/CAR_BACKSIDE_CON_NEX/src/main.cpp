@@ -97,7 +97,7 @@ void fnPjonSender(void);
 void fnWaterLevelControl(void);
 bool fnMainPowerControl(void);
 uint8_t fnDebounce(uint8_t sample);
-bool fnSensorsSupplyControl(float voltage);
+void fnSensorsSupplyControl(MyData& data, ErrLog& Log, EEPROMClassEx& Eeprom, GTimer& timer);
 uint16_t fnResSensRead(void);
 
 //обработчик прерывания от Timer3 (сброс внешнего WDT)
@@ -438,9 +438,9 @@ void fnMenuDynamicDataUpdate(void)
             myNex.writeNum(F("water.val"), main_data.water_level_liter); //
             myNex.writeNum(F("OutsideTemp.val"), main_data.outside_temperature);
             myNex.writeNum(F("InsideTemp.val"), main_data.inside_temperature);
-            myNex.writeNum(F("batVolt.val"), main_data.battery_voltage * 10); // main_data.battery_voltage
+            myNex.writeNum(F("batVolt.val"), main_data.battery_voltage * 10);  // 
 
-            if (flag_sens_supply_fault)
+            if (main_data.flag_sens_supply_fault)
             {
                   myNex.writeNum(F("p0t0.bco"), RED);
                   myNex.writeNum(F("p0t0.pco"), WHITE);
@@ -1178,7 +1178,7 @@ void fnMenuDynamicDataUpdate(void)
             myNex.writeNum(F("p16n2.val"), ErrorLog.pj_flow_sensor_error_cnt);
             myNex.writeNum(F("p16n3.val"), ErrorLog.ds18b20_error_cnt);
 
-            if (flag_sens_supply_fault)
+            if (main_data.flag_sens_supply_fault)
                   myNex.writeNum(F("p16t1.bco"), RED);
             else
                   myNex.writeNum(F("p16t1.bco"), CYAN);
@@ -1274,7 +1274,7 @@ void trigger8()
 // trigger 9  Error log reset
 void trigger9()
 {
-      memset(&ErrorLog, 0, sizeof(Log));
+      memset(&ErrorLog, 0, sizeof(ErrorLog));
       EEPROM.updateBlock(EEPROM_ERROR_LOG_ADDRES, ErrorLog);
 }
 //******************************************************************************
@@ -1282,7 +1282,7 @@ void trigger9()
 // trigger 10  Sens supply error  reset
 void trigger10()
 {
-      flag_sens_supply_fault = false;
+      main_data.flag_sens_supply_fault = false;
 }
 //******************************************************************************
 
@@ -1785,7 +1785,7 @@ void TaskLoop(void *pvParameters __attribute__((unused))) // This is a Task.
 
             main_data.main_supply_output_state = fnMainPowerControl();
 
-            main_data.sensors_supply_output_state = fnSensorsSupplyControl(main_data.sensors_supply_voltage);
+            fnSensorsSupplyControl(main_data, ErrorLog, EEPROM, timerSensSupplyCheck);
 
             main_data.res_sensor_resistance = fnResSensRead();
 
@@ -2302,29 +2302,29 @@ uint8_t fnDebounce(uint8_t sample) // антидребезг на основе �
 //*************************************************************************
 
 // Sensors Supply Control
-bool fnSensorsSupplyControl(float voltage)
+void fnSensorsSupplyControl(MyData& data, ErrLog& Log, EEPROMClassEx& Eeprom, GTimer& timer )
 {
       static uint8_t step = 0;
       static uint8_t sens_supply_check_cnt = 0;
       static bool state = true;
 
       
-            if (timerSensSupplyCheck.isReady())
+            if (timer.isReady())
             {
                   switch (step)
                   {
 
                   case 0:
                         state = true;
-                        timerSensSupplyCheck.setInterval(SENS_SUPPLY_CHECK_PERIOD);
+                        timer.setInterval(SENS_SUPPLY_CHECK_PERIOD);
                         step = 1;
                         break;
 
                   case 1:
-                        if (voltage < SENS_SUPPLY_CHECK_MIN_V)
+                        if (data.battery_voltage < SENS_SUPPLY_CHECK_MIN_V)
                         {
                               sens_supply_check_cnt++;
-                              timerSensSupplyCheck.setInterval(SENS_SUPPLY_CHECK_PERIOD);
+                              timer.setInterval(SENS_SUPPLY_CHECK_PERIOD);
                         }
                         else
                         {
@@ -2338,22 +2338,22 @@ bool fnSensorsSupplyControl(float voltage)
 
                   case 2:
                         state = false;
-                        flag_sens_supply_fault = true;
-                        ErrorLog.sens_supply_error_cnt++;
-                        EEPROM.updateBlock(EEPROM_ERROR_LOG_ADDRES, ErrorLog);
-                        timerSensSupplyCheck.setInterval(SENS_SUPPLY_CHECK_PERIOD * 3);
+                        data.flag_sens_supply_fault = true;
+                        Log.sens_supply_error_cnt++;
+                        Eeprom.updateBlock(EEPROM_ERROR_LOG_ADDRES, ErrorLog);
+                        timer.setInterval(SENS_SUPPLY_CHECK_PERIOD * 3);
                         step = 3;
                         break;
 
                   case 3:
-                        if (!flag_sens_supply_fault)
+                        if (!data.flag_sens_supply_fault)
                         {
                               state = true;
                               step = 0;
                               sens_supply_check_cnt = 0;
                         }
                         
-                        timerSensSupplyCheck.setInterval(SENS_SUPPLY_CHECK_START_DELAY); // задержка как при старте
+                        timer.setInterval(SENS_SUPPLY_CHECK_START_DELAY); // задержка как при старте
                         break;
 
                   default:
@@ -2362,7 +2362,7 @@ bool fnSensorsSupplyControl(float voltage)
             }
       
 
-      return state;
+      data.sensors_supply_output_state =  state;
 }
 //******************************************************************
 

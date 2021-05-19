@@ -95,6 +95,7 @@ struct MyData
   bool wdt_reset_output_state;    //состояние выхода сброса внешнего WDT
   bool screen_sleep_mode;         // флаг спящего режима экрана Nextion
   bool low_washer_water_level;    // низкий уровень воды в бачке омывателя
+  bool flag_sens_supply_fault;
   uint16_t mb_rates[6] = {4800, 7200, 9600, 19200, 38400, 57600};   // скорость связи по протоколу ModBus
 } main_data;
 
@@ -127,12 +128,11 @@ bool flag_convOff_due_ign_switch; // флаг что конветер был в�
 uint8_t inputs_undebounced_sample = 0;
 uint8_t inputs_debounced_state = 0;
 
-bool flag_sens_supply_fault = false;
 bool flag_error_present = false;
 //***********************************************************************************
 
 //********* ERROR LOG ***************************************************************
-struct Log
+struct ErrLog
 {
   uint16_t sens_supply_error_cnt;      // счетчик ошбок питания сенсоров
   uint16_t pj_float_sensor_error_cnt;  // счетчик запросов без ответа датчика уровня
