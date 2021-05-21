@@ -1943,12 +1943,14 @@ void TaskPjonTransmitter(void *pvParameters __attribute__((unused)))
 {
       while (1)
       {
+            
             if (timerPjonTransmittPeriod.isReady())
             {
                   fnPjonSender();
             }
 
-            pjon_RX_response = bus.receive(1000); // прием данных PJON и возврат результата приёма
+            pjon_RX_response = bus.receive(2000); // прием данных PJON и возврат результата приёма
+            
 
             vTaskDelay(2); //  * 15 ms
       }
