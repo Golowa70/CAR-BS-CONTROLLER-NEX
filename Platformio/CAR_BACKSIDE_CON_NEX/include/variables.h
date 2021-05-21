@@ -6,11 +6,9 @@ uint16_t receive_from_ID;                //   идентификатор уст�
 uint16_t pjon_TX__float_sensor_response; //  результат передачи PJON
 uint16_t pjon_TX__flow_sensor_response;  //  результат передачи PJON
 uint16_t pjon_RX_response;               //  результат приёма PJON
-uint8_t pjon_sender_cnt;                 // счетчик для поочередной передачи нескольким адресатам, инкрементируется при передаче
 uint8_t pjon_float_sensor_fault_cnt;     // счетчик ошибки связи с датчиком уровня, добавляем при каждой передаче и сбрасываем при удачном приёме
 uint8_t pjon_flow_sensor_fault_cnt;      // счетчик ошибки связи с датчиком протечки, добавляем при каждой передаче и сбрасываем при удачном приёме
-uint8_t pjon_wls_percent_old;            // предыдущее значение уровня воды принятое от датчика уровня
-uint8_t pjon_wls_liter_old;              // предыдущее значение количества воды принятое от датчика уровня
+
 bool flag_pjon_float_sensor_connected;
 bool flag_pjon_float_sensor_connected_old_state;
 bool flag_pjon_flow_sensor_connected;
@@ -19,7 +17,7 @@ bool flag_pjon_flow_sensor_connected_old_state;
 //pjon receive from water level sensor & water flow sensor
 struct PjonReceive
 { // структура принятых данных от датчиков уровня воды по протоколу PJON
-  uint8_t data;
+  uint8_t value;
 } pjon_wls_percent_receive, pjon_wfs_liter_receive;
 
 //pjon transmitt
@@ -59,14 +57,14 @@ struct Setpoints
   uint8_t mb_baud_rate;
   uint8_t buzzer_out_mode;
   uint8_t scrreen_off_delay;  //
-  uint8_t buzzer_melody_2;    // NOT USED
+  uint8_t resistive_sensor_nominal;    // 
   uint8_t buzzer_melody_3;    // NOT USED
   uint8_t buzzer_melody_4;    // NOT USED
   uint8_t voltage_correction; // 127 - нолевая коррекция
   uint8_t shutdown_delay;
   uint8_t lcd_brightness;
   uint8_t logo_selection;
-  uint8_t spare_byte;
+  uint8_t water_sensor_type_selection;
   uint8_t sensors_ID_array[MAX_TEMP_SENSORS][8];
   uint8_t sensors_select_array[MAX_TEMP_SENSORS]; // inside, outside, spare
 } setpoints_data, default_setpoints_data, old_setpoints_data;
@@ -137,7 +135,17 @@ struct ErrLog
   uint16_t sens_supply_error_cnt;      // счетчик ошбок питания сенсоров
   uint16_t pj_float_sensor_error_cnt;  // счетчик запросов без ответа датчика уровня
   uint16_t pj_flow_sensor_error_cnt;   // счетчик запросов без ответа датчика протечки
-  uint16_t ds18b20_error_cnt;          // счетчик ошибок шины 1Wire
+  uint16_t temp_sensors_error_cnt;     // счетчик ошибок шины 1Wire
+  uint16_t resist_sensor_error_cnt;    // счетчик ошибок 
 } ErrorLog;
+
+struct Alarms
+{
+  bool sens_supply;
+  bool pj_float_sensor;
+  bool pj_flow_sensor;
+  bool temp_sensors;
+  bool resist_sensor;
+} present_alarms,old_alarms;
 
 #endif

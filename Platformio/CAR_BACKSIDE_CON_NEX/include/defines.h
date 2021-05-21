@@ -13,6 +13,7 @@
 #define BLUE        20510
 #define GREEN       33792
 #define GRAY        27469
+#define GRAY2       50712
 #define RED         57543
 #define BLUE_2         31
 #define CYAN         2831
@@ -48,6 +49,14 @@
 #define ON_MODE                1
 #define AUTO_MODE              2
 
+//water sensors types
+#define WATER_FLOAT_SENSOR_PJ  0
+#define WATER_FLOW_SENSOR_PJ   1
+#define WATER_RESISTIVE_SENSOR 2
+
+//resistive sensor nominal
+#define MIN_RESISTANCE          10
+#define MAX_RESISTANCE          255
 
 //eeprom
 #define EEPROM_SETPOINTS_ADDRESS  0
@@ -110,9 +119,9 @@
 
 
 #define VERSION "ver 1.0"
-#define DIVISION_RATIO_VOLTAGE_INPUT  0.0208  // разрешение 0.0025 уможить на коэфициент деления предусилителя 4.85(или делителя)
+#define DIVISION_RATIO_VOLTAGE_INPUT  0.0208      // разрешение 0.0025 уможить на коэфициент деления предусилителя 4.85(или делителя)
 #define DIVISION_RATIO_SENS_SUPPLY_INPUT  0.0102  // разрешение 0.0025 уможить на коэфициент деления предусилителя 4.16
-#define DIVISION_RATIO_RESIST_SENSOR  0.278
+#define DIVISION_RATIO_RESIST_SENSOR  0.278       //
 
 #define SECOND       1000           //ms  секунда
 #define MINUTE       60000          //ms  минута

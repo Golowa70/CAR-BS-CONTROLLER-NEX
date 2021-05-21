@@ -47,7 +47,7 @@ void fnDefaultSetpointsInit(void){
 
     setpoints_data.magic_key = MAGIC_KEY ;        
     setpoints_data.pump_off_delay = 5; // сек
-    setpoints_data.resistive_sensor_correction = 0;
+    setpoints_data.resistive_sensor_correction = 127;
     setpoints_data.water_tank_capacity = 35; // литр
     setpoints_data.water_level_liter = 0;
     setpoints_data.lowUconverter_off_delay = 3; // min
@@ -63,14 +63,14 @@ void fnDefaultSetpointsInit(void){
     setpoints_data.mb_baud_rate = 1; //1-9600, 2-19200, 3-38400 ...
     setpoints_data.buzzer_out_mode = ON_MODE;
     setpoints_data.scrreen_off_delay = 5; // 5 секунд
-    setpoints_data.buzzer_melody_2 = 2;
-    setpoints_data.buzzer_melody_3 = 3;
-    setpoints_data.buzzer_melody_4 = 4;
+    setpoints_data.resistive_sensor_nominal = 190;
+    setpoints_data.buzzer_melody_3 = 0;
+    setpoints_data.buzzer_melody_4 = 0;
     setpoints_data.voltage_correction = 127; // 
     setpoints_data.shutdown_delay = 1; // час
     setpoints_data.lcd_brightness = 90;   
     setpoints_data.logo_selection = 0;
-    setpoints_data.spare_byte = 0;
+    setpoints_data.water_sensor_type_selection = 0;
     
 }
 

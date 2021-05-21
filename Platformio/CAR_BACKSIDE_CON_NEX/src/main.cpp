@@ -23,8 +23,11 @@
 #define PJON_INCLUDE_SWBB
 //#define PJON_INCLUDE_ASYNC_ACK true   //
 //#define TS_RESPONSE_TIME_OUT 0        //
+//#define SWBB_RESPONSE_TIMEOUT       2000
+//#define SWBB_BACK_OFF_DEGREE          8
 #include "PJON.h"
 PJON<SoftwareBitBang> bus(PJON_MY_ID);
+
 
 #define TEMPERATURE_PRECISION 9                                  // точность измерения температуры 9 бит
 OneWire oneWire(ONE_WIRE_PIN);                                   // порт шины 1WIRE
@@ -94,11 +97,11 @@ float fnPsVoltagRead(void);
 float fnSensVoltagRead(void);
 void pj_receiver_function(uint8_t *payload, uint16_t length, const PJON_Packet_Info &packet_info);
 void fnPjonSender(void);
-void fnWaterLevelControl(void);
-bool fnMainPowerControl(void);
+void fnWaterLevelControl(MyData& data, PjonReceive& receive_data, PjonReceive& wfs_receive_data, Setpoints& setpoints, Alarms& alarms);
+void fnMainPowerControl(MyData& data, Setpoints& setpoints, GTimer& timer);
 uint8_t fnDebounce(uint8_t sample);
 void fnSensorsSupplyControl(MyData& data, ErrLog& Log, EEPROMClassEx& Eeprom, GTimer& timer);
-uint16_t fnResSensRead(void);
+void fnResSensRead(MyData& data);
 
 //обработчик прерывания от Timer3 (сброс внешнего WDT)
 ISR(TIMER3_A)
@@ -167,8 +170,8 @@ void setup()
       ps_voltage_filter.setStep(50);  // установка шага фильтрации (мс). Чем меньше, тем резче фильтр
       sens_voltage_filter.setCoef(0.1);
       sens_voltage_filter.setStep(50);
-      resistive_sensor_filter.setCoef(0.1);
-      resistive_sensor_filter.setStep(200);
+      resistive_sensor_filter.setCoef(0.02);
+      resistive_sensor_filter.setStep(2000);
 
       temp_sensors.begin();
       temp_sensors.setResolution(thermometerID_1, TEMPERATURE_PRECISION);
@@ -571,6 +574,26 @@ void fnMenuDynamicDataUpdate(void)
             myNex.writeNum(F("p5n2.val"), setpoints_data.water_tank_capacity);
             myNex.writeNum(F("p5n4.val"), main_data.water_level_liter);
             myNex.writeNum(F("p5n3.val"), timerPumpOffDelay.currentTime() * 0.001);
+            myNex.writeNum(F("p5n5.val"), setpoints_data.resistive_sensor_nominal);
+
+            switch (setpoints_data.water_sensor_type_selection)
+            {
+            case WATER_FLOAT_SENSOR_PJ:
+                  myNex.writeStr("p5t8.txt", "wls_pj");
+                  break;
+
+            case WATER_FLOW_SENSOR_PJ:
+                  myNex.writeStr("p5t8.txt", "wfs_pj");
+                  break;
+
+            case WATER_RESISTIVE_SENSOR:
+                  myNex.writeStr("p5t8.txt", "resist");
+                  break;
+
+            default:
+                  break;
+            }
+            
 
             //меняем цвет уставки если значение изменено но не сохранено в EEPROM
             if (old_setpoints_data.pump_off_delay != setpoints_data.pump_off_delay)
@@ -585,6 +608,15 @@ void fnMenuDynamicDataUpdate(void)
                   myNex.writeNum(F("p5n2.pco"), YELLOW);
             else
                   myNex.writeNum(F("p5n2.pco"), WHITE);
+            if (old_setpoints_data.water_sensor_type_selection != setpoints_data.water_sensor_type_selection)
+                  myNex.writeNum(F("p5t8.pco"), YELLOW);
+            else
+                  myNex.writeNum(F("p5t8.pco"), WHITE);  
+            if (old_setpoints_data.resistive_sensor_nominal != setpoints_data.resistive_sensor_nominal)
+                  myNex.writeNum(F("p5n5.pco"), YELLOW);
+            else
+                  myNex.writeNum(F("p5n5.pco"), WHITE);      
+
 
             //обновляем пункт управления насосом
             if (main_data.pump_output_state)
@@ -598,6 +630,8 @@ void fnMenuDynamicDataUpdate(void)
                   myNex.writeNum(F("p5t1.pco"), BLUE);
                   myNex.writeNum(F("p5t2.pco"), WHITE);
                   myNex.writeNum(F("p5t3.pco"), WHITE);
+                  myNex.writeNum(F("p5t6.pco"), WHITE);
+                  myNex.writeNum(F("p5t7.pco"), WHITE);
                   variable_value = &setpoints_data.pump_off_delay;
                   var_min_value = 1;
                   var_max_value = 60; // 60 секунд
@@ -607,8 +641,10 @@ void fnMenuDynamicDataUpdate(void)
                   myNex.writeNum(F("p5t1.pco"), WHITE);
                   myNex.writeNum(F("p5t2.pco"), BLUE);
                   myNex.writeNum(F("p5t3.pco"), WHITE);
+                  myNex.writeNum(F("p5t6.pco"), WHITE);
+                  myNex.writeNum(F("p5t7.pco"), WHITE);
                   variable_value = &setpoints_data.resistive_sensor_correction;
-                  var_min_value = 1;
+                  var_min_value = 0;
                   var_max_value = 255;
                   break;
 
@@ -616,15 +652,41 @@ void fnMenuDynamicDataUpdate(void)
                   myNex.writeNum(F("p5t1.pco"), WHITE);
                   myNex.writeNum(F("p5t2.pco"), WHITE);
                   myNex.writeNum(F("p5t3.pco"), BLUE);
+                  myNex.writeNum(F("p5t6.pco"), WHITE);
+                  myNex.writeNum(F("p5t7.pco"), WHITE);
                   variable_value = &setpoints_data.water_tank_capacity;
                   var_min_value = 1;
                   var_max_value = 100; // 100 литров
+                  break;
+
+            case 4:
+                  myNex.writeNum(F("p5t1.pco"), WHITE);
+                  myNex.writeNum(F("p5t2.pco"), WHITE);
+                  myNex.writeNum(F("p5t3.pco"), WHITE);
+                  myNex.writeNum(F("p5t6.pco"), BLUE);
+                  myNex.writeNum(F("p5t7.pco"), WHITE);
+                  variable_value = &setpoints_data.water_sensor_type_selection;
+                  var_min_value = WATER_FLOAT_SENSOR_PJ;
+                  var_max_value = WATER_RESISTIVE_SENSOR; // 
+                  break;
+
+            case 5:
+                  myNex.writeNum(F("p5t1.pco"), WHITE);
+                  myNex.writeNum(F("p5t2.pco"), WHITE);
+                  myNex.writeNum(F("p5t3.pco"), WHITE);
+                  myNex.writeNum(F("p5t6.pco"), WHITE);
+                  myNex.writeNum(F("p5t7.pco"), BLUE);
+                  variable_value = &setpoints_data.resistive_sensor_nominal;
+                  var_min_value = MIN_RESISTANCE;
+                  var_max_value = MAX_RESISTANCE; // 
                   break;
 
             default:
                   myNex.writeNum(F("p5t1.pco"), WHITE);
                   myNex.writeNum(F("p5t2.pco"), WHITE);
                   myNex.writeNum(F("p5t3.pco"), WHITE);
+                  myNex.writeNum(F("p5t6.pco"), WHITE);
+                  myNex.writeNum(F("p5t7.pco"), WHITE);
                   variable_value = NULL;
                   var_min_value = 0;
                   var_max_value = 0;
@@ -820,9 +882,21 @@ void fnMenuDynamicDataUpdate(void)
             myNex.writeNum(F("p8n3.val"), setpoints_data.pjon_float_fault_timer);
             myNex.writeNum(F("p8n4.val"), setpoints_data.pjon_transmitt_period);
 
-            switch (pjon_sender_cnt)
+            switch (setpoints_data.water_sensor_type_selection)
             {
-            case 0: //индикация состояния связи
+            case WATER_FLOAT_SENSOR_PJ: //индикация состояния связи
+
+                  myNex.writeStr("p8t12.txt", " <-X->");
+
+                  if (!flag_pjon_float_sensor_connected)
+                  {
+                        myNex.writeStr("p8t10.txt", " <-X->");
+                  }
+                  else
+                  {
+                        myNex.writeStr("p8t10.txt", " <--->");
+                  }
+
 
                   switch (pjon_TX__float_sensor_response)
                   {
@@ -849,7 +923,18 @@ void fnMenuDynamicDataUpdate(void)
 
                   break;
 
-            case 1: //индикация состояния связи
+            case WATER_FLOW_SENSOR_PJ: //индикация состояния связи
+                  
+                  myNex.writeStr("p8t10.txt", " <-X->");
+
+                  if (!flag_pjon_flow_sensor_connected)
+                  {
+                        myNex.writeStr("p8t12.txt", " <-X->");
+                  }
+                  else
+                  {
+                        myNex.writeStr("p8t12.txt", " <--->");
+                  }
 
                   switch (pjon_TX__flow_sensor_response)
                   {
@@ -880,23 +965,7 @@ void fnMenuDynamicDataUpdate(void)
                   break;
             }
 
-            if (!flag_pjon_float_sensor_connected)
-            {
-                  myNex.writeStr("p8t10.txt", " <-X->");
-            }
-            else
-            {
-                  myNex.writeStr("p8t10.txt", " <--->");
-            }
 
-            if (!flag_pjon_flow_sensor_connected)
-            {
-                  myNex.writeStr("p8t12.txt", " <-X->");
-            }
-            else
-            {
-                  myNex.writeStr("p8t12.txt", " <--->");
-            }
 
             //меняем цвет уставки если значение изменено но не сохранено в EEPROM
             if (old_setpoints_data.pjon_ID != setpoints_data.pjon_ID)
@@ -1176,7 +1245,7 @@ void fnMenuDynamicDataUpdate(void)
             myNex.writeNum(F("p16n0.val"), ErrorLog.sens_supply_error_cnt);
             myNex.writeNum(F("p16n1.val"), ErrorLog.pj_float_sensor_error_cnt);
             myNex.writeNum(F("p16n2.val"), ErrorLog.pj_flow_sensor_error_cnt);
-            myNex.writeNum(F("p16n3.val"), ErrorLog.ds18b20_error_cnt);
+            myNex.writeNum(F("p16n3.val"), ErrorLog.temp_sensors_error_cnt);
 
             if (main_data.flag_sens_supply_fault)
                   myNex.writeNum(F("p16t1.bco"), RED);
@@ -1507,14 +1576,10 @@ float fnSensVoltagRead(void)
 //******************************************************************************************
 
 // Analog read resestive sensor resistance
-uint16_t fnResSensRead(void)
+void fnResSensRead(MyData& data)
 {
-      uint16_t resistance;
-
-      resistance = (resistive_sensor_filter.filtered(analogRead(RESISTIVE_SENSOR)) * DIVISION_RATIO_RESIST_SENSOR);
-      //map(resistance,3,290,0,192);
-
-      return resistance;
+      data.res_sensor_resistance = (resistive_sensor_filter.filtered(analogRead(RESISTIVE_SENSOR)) * DIVISION_RATIO_RESIST_SENSOR);
+      //map(resistance,3,290,0,192);     
 }
 //******************************************************************************************
 
@@ -1542,56 +1607,93 @@ void pj_receiver_function(uint8_t *payload, uint16_t length, const PJON_Packet_I
 
 // fnWaterLevelControl
 
-void fnWaterLevelControl(void)
+void fnWaterLevelControl(MyData& data, PjonReceive& wls_receive_data, PjonReceive& wfs_receive_data, Setpoints& setpoints, Alarms& alarms)
 {
+      float water_tank_capacity_temp_value = (float) setpoints.water_tank_capacity; // для вычисления дробных значений
 
-      if (pjon_wls_percent_receive.data != pjon_wls_percent_old)
-      { // если изменилось состояние уровня воды...
+      switch(setpoints.water_sensor_type_selection){
 
-            switch (pjon_wls_percent_receive.data)
+      case WATER_FLOAT_SENSOR_PJ:
+
+            alarms.pj_float_sensor = !flag_pjon_float_sensor_connected;
+            alarms.pj_flow_sensor = false;
+            alarms.resist_sensor = false;
+
+            switch (wls_receive_data.value)
             {
 
             case WATER_LEVEL_LESS_THEN_25: // если меньше четверти ...
-                  main_data.water_level_percent = 1;
+                  data.water_level_percent = 1;
                   break;
 
             case WATER_LEVEL_25:
-                  main_data.water_level_percent = 25;
+                  data.water_level_percent = 25;
                   // tone(BUZZER,1000, 100);
                   break;
 
             case WATER_LEVEL_50:
-                  main_data.water_level_percent = 50;
+                  data.water_level_percent = 50;
 
                   //tone(BUZZER,1000, 100);
                   break;
 
             case WATER_LEVEL_75:
-                  main_data.water_level_percent = 75;
+                  data.water_level_percent = 75;
 
                   //tone(BUZZER,1000, 100);
                   break;
 
             case WATER_LEVEL_100: //если максимум...
-                  main_data.water_level_percent = 100;
+                  data.water_level_percent = 100;
 
                   //tone(BUZZER,1000, 100);
                   break;
 
             case WATER_LEVEL_SENSOR_DEFECTIVE: // если сенсор неисправен...
-                  main_data.water_level_percent = 0;
+                  data.water_level_percent = 0;
                   break;
 
             default:
-                  main_data.water_level_percent = 0;
+                  data.water_level_percent = 0;
                   break;
             }
+                  
+            data.water_level_liter = (uint8_t) (setpoints.water_tank_capacity * data.water_level_percent * 0.01);
+            break;
 
-            pjon_wls_percent_old = pjon_wls_percent_receive.data; // обновляем предыдущее состояние
-      }
+      case WATER_FLOW_SENSOR_PJ:                // датчик протечки считает израсходованные литры
 
-      //main_data.water_level_liter = pjon_wfs_liter_receive.data;
-      main_data.water_level_liter = (setpoints_data.water_tank_capacity * main_data.water_level_percent * 0.01);
+            alarms.pj_float_sensor = false;
+            alarms.pj_flow_sensor = !flag_pjon_flow_sensor_connected;
+            alarms.resist_sensor = false;
+
+            if(wfs_receive_data.value > setpoints.water_tank_capacity || alarms.pj_flow_sensor) {
+                  data.water_level_liter = 0;
+                  data.water_level_percent = 0;
+            }
+            else {
+                  data.water_level_liter = setpoints.water_tank_capacity - wfs_receive_data.value;
+                  data.water_level_percent = (uint8_t) data.water_level_liter / (setpoints.water_tank_capacity * 0.01); // литры в проценты
+            }
+            break;
+
+      case WATER_RESISTIVE_SENSOR:      // резистивный датчик 
+            
+            alarms.pj_float_sensor = false;
+            alarms.pj_flow_sensor = false;
+
+            data.water_level_liter = data.res_sensor_resistance * (water_tank_capacity_temp_value / setpoints.resistive_sensor_nominal);
+            if(data.res_sensor_resistance > (setpoints.resistive_sensor_nominal + 10)) {
+                  data.water_level_liter = 0; //
+                  alarms.resist_sensor = true; //
+            }       
+            data.water_level_percent = (uint8_t) data.water_level_liter / (setpoints.water_tank_capacity * 0.01); // литры в проценты
+            break;
+
+      default:
+            break;
+
+      }           
 }
 //*******************************************************************************************
 
@@ -1602,28 +1704,25 @@ void fnPjonSender(void)
       if (!bus.update())
       {
 
-            switch (pjon_sender_cnt)
+            switch (setpoints_data.water_sensor_type_selection)
             {
-            case 0:
+            case WATER_FLOAT_SENSOR_PJ:
                   pjon_TX__float_sensor_response = bus.send_packet(PJON_WATER_LEVEL_SENSOR_ID, "R", 1); //отправляем запрос к датчику уровня воды
                   if (pjon_float_sensor_fault_cnt < setpoints_data.pjon_float_fault_timer)
                         pjon_float_sensor_fault_cnt++;
-                  pjon_sender_cnt++;
                   break;
 
-            case 1:
+            case WATER_FLOW_SENSOR_PJ:
                   pjon_TX__flow_sensor_response = bus.send_packet(PJON_WATER_FLOW_SENSOR_ID, "R", 1); //отправляем запрос к датчику протечки воды
                   if (pjon_flow_sensor_fault_cnt < setpoints_data.pjon_float_fault_timer)
                         pjon_flow_sensor_fault_cnt++;
-                  pjon_sender_cnt++;
                   break;
 
             default:
                   break;
             }
 
-            if (pjon_sender_cnt > (PJON_MAX_NODES - 1))
-                  pjon_sender_cnt = 0;
+           
       }
 }
 //*******************************************************************************************
@@ -1674,7 +1773,7 @@ void TaskLoop(void *pvParameters __attribute__((unused))) // This is a Task.
             ModbusRTUServer.holdingRegisterWrite(0x06, main_data.res_sensor_resistance);
             ModbusRTUServer.holdingRegisterWrite(0x07, ErrorLog.pj_float_sensor_error_cnt);
             ModbusRTUServer.holdingRegisterWrite(0x08, ErrorLog.sens_supply_error_cnt);
-            ModbusRTUServer.holdingRegisterWrite(0x09, ErrorLog.ds18b20_error_cnt);
+            ModbusRTUServer.holdingRegisterWrite(0x09, ErrorLog.temp_sensors_error_cnt);
 
             if (timerInputsUpdate.isReady() && timerStartDelay.isReady())
                   fnInputsUpdate();
@@ -1684,7 +1783,7 @@ void TaskLoop(void *pvParameters __attribute__((unused))) // This is a Task.
 
             main_data.converter_output_state = fnConverterControl(main_data.battery_voltage, setpoints_data.convertet_out_mode);
 
-            //******* отслеживание изменения состояния двери для звуковой индикации
+      //******* отслеживание изменения состояния двери для звуковой индикации
             if (main_data.door_switch_state != flag_door_switch_old_state)
             {
                   flag_door_switch_old_state = main_data.door_switch_state;
@@ -1708,7 +1807,7 @@ void TaskLoop(void *pvParameters __attribute__((unused))) // This is a Task.
                   }
             }
 
-            //****** таймер на отключение экрана
+      //****** таймер на отключение экрана
             if (main_data.door_switch_state)
             {
                   timerScreenOffDelay.setInterval((uint32_t)setpoints_data.scrreen_off_delay * SECOND);
@@ -1724,10 +1823,10 @@ void TaskLoop(void *pvParameters __attribute__((unused))) // This is a Task.
             else
                   myNex.writeStr("sleep=0");
 
-            //******* Pjon float sensor fault detection
+      //******* Pjon float sensor fault detection
             if (pjon_float_sensor_fault_cnt >= setpoints_data.pjon_float_fault_timer) // если больше n запросов сенсору без ответа
             {
-                  pjon_wls_percent_receive.data = 0; // обнуляем значение уровня воды
+                  pjon_wls_percent_receive.value = 0; // обнуляем значение уровня воды
                   flag_pjon_float_sensor_connected = false;
             }
 
@@ -1752,10 +1851,10 @@ void TaskLoop(void *pvParameters __attribute__((unused))) // This is a Task.
                   flag_pjon_float_sensor_connected_old_state = flag_pjon_float_sensor_connected;
             }
 
-            //******* Pjon flow sensor fault detection
+      //******* Pjon flow sensor fault detection
             if (pjon_flow_sensor_fault_cnt >= setpoints_data.pjon_float_fault_timer) // если больше n запросов сенсору без ответа
             {
-                  pjon_wfs_liter_receive.data = 0; // обнуляем значение уровня воды
+                  pjon_wfs_liter_receive.value = 0; // обнуляем значение уровня воды
                   flag_pjon_flow_sensor_connected = false;
             }
 
@@ -1780,14 +1879,17 @@ void TaskLoop(void *pvParameters __attribute__((unused))) // This is a Task.
                   flag_pjon_flow_sensor_connected_old_state = flag_pjon_flow_sensor_connected;
             }
 
-            //*******
-            fnWaterLevelControl();
+      //******* Water resistance sensor fault detection ****************************
 
-            main_data.main_supply_output_state = fnMainPowerControl();
 
-            fnSensorsSupplyControl(main_data, ErrorLog, EEPROM, timerSensSupplyCheck);
+      //*******
+            fnWaterLevelControl(main_data, pjon_wls_percent_receive, pjon_wfs_liter_receive, setpoints_data, present_alarms);
 
-            main_data.res_sensor_resistance = fnResSensRead();
+            fnMainPowerControl(main_data, setpoints_data, timerShutdownDelay); //
+
+            fnSensorsSupplyControl(main_data, ErrorLog, EEPROM, timerSensSupplyCheck); //
+
+            fnResSensRead(main_data); //
 
             fnPumpControl();
 
@@ -1848,7 +1950,7 @@ void TaskPjonTransmitter(void *pvParameters __attribute__((unused)))
 
             pjon_RX_response = bus.receive(1000); // прием данных PJON и возврат результата приёма
 
-            vTaskDelay(1); //  * 15 ms
+            vTaskDelay(2); //  * 15 ms
       }
 }
 //********************************************************************
@@ -2102,21 +2204,21 @@ void TaskOwScanner(void *pvParameters __attribute__((unused)))
 //********************************************************************
 
 // Main power control + (sleep mode)
-bool fnMainPowerControl(void)
+void fnMainPowerControl(MyData& data, Setpoints& setpoints, GTimer& timer)
 {
       bool _state = true;
-      if (main_data.ignition_switch_state)
+      if (data.ignition_switch_state)
       {
-            timerShutdownDelay.setInterval((uint32_t)setpoints_data.shutdown_delay * HOUR);
+            timer.setInterval((uint32_t)setpoints.shutdown_delay * HOUR);
             _state = true;
       }
       else
       {
-            if (timerShutdownDelay.isReady())
+            if (timer.isReady())
                   _state = false;
       }
 
-      return _state;
+      data.main_supply_output_state =  _state;
 }
 //**********************************************************************
 
@@ -2271,7 +2373,7 @@ void TaskDebug(void *pvParameters)
             Serial.print F("ErrorLog.pj_flow_sensor_error_cnt:  ");
             Serial.println(ErrorLog.pj_flow_sensor_error_cnt);
             Serial.print F("ErrorLog.ds18b20_error_cnt:  ");
-            Serial.println(ErrorLog.ds18b20_error_cnt);
+            Serial.println(ErrorLog.temp_sensors_error_cnt);
 
             Serial.println();
 #endif

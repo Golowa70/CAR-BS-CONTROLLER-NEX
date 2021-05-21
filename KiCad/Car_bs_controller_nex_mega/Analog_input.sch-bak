@@ -307,7 +307,7 @@ L Amplifier_Operational:MCP6004 U6
 U 1 1 60A45791
 P 4500 3600
 F 0 "U6" H 4500 3967 50  0000 C CNN
-F 1 "MCP6004" H 4500 3876 50  0000 C CNN
+F 1 "MCP6004(LM324)" H 4500 3876 50  0000 C CNN
 F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 4450 3700 50  0001 C CNN
 F 3 "http://ww1.microchip.com/downloads/en/DeviceDoc/21733j.pdf" H 4550 3800 50  0001 C CNN
 	1    4500 3600
@@ -336,19 +336,6 @@ F 2 "" H 2850 4100 50  0001 C CNN
 F 3 "" H 2850 4100 50  0001 C CNN
 	1    2850 4100
 	1    0    0    -1  
-$EndComp
-$Comp
-L Car_bs_controller_nex_mega-rescue:R-Device R?
-U 1 1 60104923
-P 1950 3050
-AR Path="/5FF96B9E/60104923" Ref="R?"  Part="1" 
-AR Path="/60100EBE/60104923" Ref="R56"  Part="1" 
-F 0 "R56" V 1743 3050 50  0000 C CNN
-F 1 "1k" V 1834 3050 50  0000 C CNN
-F 2 "Resistor_SMD:R_0805_2012Metric" V 1880 3050 50  0001 C CNN
-F 3 "~" H 1950 3050 50  0001 C CNN
-	1    1950 3050
-	-1   0    0    1   
 $EndComp
 $Comp
 L Car_bs_controller_nex_mega-rescue:R-Device R?
@@ -426,7 +413,7 @@ P 4450 4050
 AR Path="/5FF96B9E/60A64790" Ref="R?"  Part="1" 
 AR Path="/60100EBE/60A64790" Ref="R62"  Part="1" 
 F 0 "R62" V 4243 4050 50  0000 C CNN
-F 1 "10k" V 4334 4050 50  0000 C CNN
+F 1 "10k*" V 4334 4050 50  0000 C CNN
 F 2 "Resistor_SMD:R_0603_1608Metric_Pad0.98x0.95mm_HandSolder" V 4380 4050 50  0001 C CNN
 F 3 "~" H 4450 4050 50  0001 C CNN
 	1    4450 4050
@@ -497,7 +484,7 @@ P 5600 3900
 AR Path="/5FF96B9E/60A78379" Ref="R?"  Part="1" 
 AR Path="/60100EBE/60A78379" Ref="R64"  Part="1" 
 F 0 "R64" V 5393 3900 50  0000 C CNN
-F 1 "10k" V 5484 3900 50  0000 C CNN
+F 1 "15k*" V 5484 3900 50  0000 C CNN
 F 2 "Resistor_SMD:R_0603_1608Metric_Pad0.98x0.95mm_HandSolder" V 5530 3900 50  0001 C CNN
 F 3 "~" H 5600 3900 50  0001 C CNN
 	1    5600 3900
@@ -535,7 +522,7 @@ L Amplifier_Operational:MCP6004 U6
 U 2 1 60A8BA22
 P 3400 5950
 F 0 "U6" H 3400 6317 50  0000 C CNN
-F 1 "MCP6004" H 3400 6226 50  0000 C CNN
+F 1 "MCP6004(LM324)" H 3400 6226 50  0000 C CNN
 F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 3350 6050 50  0001 C CNN
 F 3 "http://ww1.microchip.com/downloads/en/DeviceDoc/21733j.pdf" H 3450 6150 50  0001 C CNN
 	2    3400 5950
@@ -670,7 +657,7 @@ L Amplifier_Operational:MCP6004 U6
 U 3 1 60AAC493
 P 8700 1800
 F 0 "U6" H 8700 2167 50  0000 C CNN
-F 1 "MCP6004" H 8700 2076 50  0000 C CNN
+F 1 "MCP6004(LM324)" H 8700 2076 50  0000 C CNN
 F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 8650 1900 50  0001 C CNN
 F 3 "http://ww1.microchip.com/downloads/en/DeviceDoc/21733j.pdf" H 8750 2000 50  0001 C CNN
 	3    8700 1800
@@ -760,7 +747,7 @@ L Amplifier_Operational:MCP6004 U6
 U 5 1 60AC1C82
 P 7200 5250
 F 0 "U6" H 6800 5300 50  0000 L CNN
-F 1 "MCP6004" H 6650 5200 50  0000 L CNN
+F 1 "MCP6004(LM324)" H 6650 5200 50  0000 L CNN
 F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 7150 5350 50  0001 C CNN
 F 3 "http://ww1.microchip.com/downloads/en/DeviceDoc/21733j.pdf" H 7250 5450 50  0001 C CNN
 	5    7200 5250
@@ -788,7 +775,7 @@ L Amplifier_Operational:MCP6004 U6
 U 4 1 60AC89DB
 P 9000 4050
 F 0 "U6" H 9000 4417 50  0000 C CNN
-F 1 "MCP6004" H 9000 4326 50  0000 C CNN
+F 1 "MCP6004(LM324)" H 9000 4326 50  0000 C CNN
 F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 8950 4150 50  0001 C CNN
 F 3 "http://ww1.microchip.com/downloads/en/DeviceDoc/21733j.pdf" H 9050 4250 50  0001 C CNN
 	4    9000 4050
@@ -866,4 +853,19 @@ Wire Wire Line
 	1750 1050 2200 1050
 Wire Wire Line
 	1450 1050 1300 1050
+$Comp
+L Car_bs_controller_nex_mega-rescue:R-Device R?
+U 1 1 60104923
+P 1950 3050
+AR Path="/5FF96B9E/60104923" Ref="R?"  Part="1" 
+AR Path="/60100EBE/60104923" Ref="R56"  Part="1" 
+F 0 "R56" V 1743 3050 50  0000 C CNN
+F 1 "2k*" V 1834 3050 50  0000 C CNN
+F 2 "Resistor_SMD:R_0805_2012Metric" V 1880 3050 50  0001 C CNN
+F 3 "~" H 1950 3050 50  0001 C CNN
+	1    1950 3050
+	-1   0    0    1   
+$EndComp
+Text Notes 4000 3100 0    79   ~ 0
+k=1+(R62/R60)
 $EndSCHEMATC
