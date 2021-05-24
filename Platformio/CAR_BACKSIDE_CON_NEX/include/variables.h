@@ -5,7 +5,7 @@
 uint16_t receive_from_ID;                //   идентификатор устройства от которого пришли данные
 uint16_t pjon_TX_water_sensor_response; //  результат передачи PJON
 uint16_t pjon_RX_response;               //  результат приёма PJON
-uint8_t pjon_sensor_fault_cnt;     // счетчик ошибки связи с датчиком уровня, добавляем при каждой передаче и сбрасываем при удачном приёме
+uint8_t pjon_sensor_fault_cnt;     // 
 
 bool flag_pjon_water_sensor_connected;
 bool flag_pjon_water_sensor_connected_old_state;
