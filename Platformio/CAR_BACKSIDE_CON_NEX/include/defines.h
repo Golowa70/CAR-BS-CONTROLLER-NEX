@@ -4,8 +4,8 @@
 #include <Arduino.h>
 
 #define DEBUG_GENERAL   1
-#define DEBUG_RTOS      0
-#define DEBUG_ERROR_LOG 1
+#define DEBUG_RTOS      1
+#define DEBUG_ERROR_LOG 0
 
 //colors
 #define WHITE       65535
@@ -113,7 +113,7 @@
 //pjon swbb
 #define PJON_MY_ID                    2
 #define PJON_MAIN_CONTROLLER_ID       1
-#define PJON_WATER_LEVEL_SENSOR_ID    3
+#define PJON_WATER_FLOAT_SENSOR_ID    3
 #define PJON_WATER_FLOW_SENSOR_ID     4
 #define PJON_MAX_NODES                2 // пока два
 

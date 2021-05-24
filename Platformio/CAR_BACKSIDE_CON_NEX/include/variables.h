@@ -3,14 +3,12 @@
 
 //*********** Pjon variables ********************************************************
 uint16_t receive_from_ID;                //   идентификатор устройства от которого пришли данные
-uint16_t pjon_TX__float_sensor_response; //  результат передачи PJON
-uint16_t pjon_TX__flow_sensor_response;  //  результат передачи PJON
+uint16_t pjon_TX_water_sensor_response; //  результат передачи PJON
 uint16_t pjon_RX_response;               //  результат приёма PJON
-uint8_t pjon_float_sensor_fault_cnt;     // счетчик ошибки связи с датчиком уровня, добавляем при каждой передаче и сбрасываем при удачном приёме
-uint8_t pjon_flow_sensor_fault_cnt;      // счетчик ошибки связи с датчиком протечки, добавляем при каждой передаче и сбрасываем при удачном приёме
+uint8_t pjon_sensor_fault_cnt;     // счетчик ошибки связи с датчиком уровня, добавляем при каждой передаче и сбрасываем при удачном приёме
 
-bool flag_pjon_float_sensor_connected;
-bool flag_pjon_float_sensor_connected_old_state;
+bool flag_pjon_water_sensor_connected;
+bool flag_pjon_water_sensor_connected_old_state;
 bool flag_pjon_flow_sensor_connected;
 bool flag_pjon_flow_sensor_connected_old_state;
 
@@ -18,7 +16,7 @@ bool flag_pjon_flow_sensor_connected_old_state;
 struct PjonReceive
 { // структура принятых данных от датчиков уровня воды по протоколу PJON
   uint8_t value;
-} pjon_wls_percent_receive, pjon_wfs_liter_receive;
+} pjon_sensor_receive_data;
 
 //pjon transmitt
 /*
@@ -51,7 +49,7 @@ struct Setpoints
   uint8_t light_off_delay;
   uint8_t light_out_mode;
   uint8_t pjon_ID;
-  uint8_t pjon_float_fault_timer;
+  uint8_t pjon_sensor_fault_timer;
   uint8_t pjon_transmitt_period;
   uint8_t mb_slave_ID;
   uint8_t mb_baud_rate;
@@ -93,7 +91,7 @@ struct MyData
   bool wdt_reset_output_state;    //состояние выхода сброса внешнего WDT
   bool screen_sleep_mode;         // флаг спящего режима экрана Nextion
   bool low_washer_water_level;    // низкий уровень воды в бачке омывателя
-  bool flag_sens_supply_fault;
+  bool common_alarm;
   uint16_t mb_rates[6] = {4800, 7200, 9600, 19200, 38400, 57600};   // скорость связи по протоколу ModBus
 } main_data;
 
@@ -133,8 +131,7 @@ bool flag_error_present = false;
 struct ErrLog
 {
   uint16_t sens_supply_error_cnt;      // счетчик ошбок питания сенсоров
-  uint16_t pj_float_sensor_error_cnt;  // счетчик запросов без ответа датчика уровня
-  uint16_t pj_flow_sensor_error_cnt;   // счетчик запросов без ответа датчика протечки
+  uint16_t pj_water_sensor_error_cnt;  // счетчик запросов без ответа датчика уровня
   uint16_t temp_sensors_error_cnt;     // счетчик ошибок шины 1Wire
   uint16_t resist_sensor_error_cnt;    // счетчик ошибок 
 } ErrorLog;
@@ -142,10 +139,10 @@ struct ErrLog
 struct Alarms
 {
   bool sens_supply;
-  bool pj_float_sensor;
-  bool pj_flow_sensor;
+  bool pj_water_sensor;
   bool temp_sensors;
   bool resist_sensor;
+  bool common;
 } present_alarms,old_alarms;
 
 #endif

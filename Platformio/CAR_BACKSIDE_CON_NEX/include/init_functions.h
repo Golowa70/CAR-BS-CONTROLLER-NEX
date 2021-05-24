@@ -57,7 +57,7 @@ void fnDefaultSetpointsInit(void){
     setpoints_data.convertet_out_mode = AUTO_MODE;
     setpoints_data.light_off_delay = 10; // мин
     setpoints_data.pjon_ID = 2;
-    setpoints_data.pjon_float_fault_timer = 5; // сек
+    setpoints_data.pjon_sensor_fault_timer = 5; // сек
     setpoints_data.pjon_transmitt_period = 2;  // сек
     setpoints_data.mb_slave_ID = 2;
     setpoints_data.mb_baud_rate = 1; //1-9600, 2-19200, 3-38400 ...
