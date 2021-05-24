@@ -45,6 +45,7 @@ GTimer timerInputsUpdate; // таймер период обновления вх
 GTimer timerStartDelay;   // таймер задержки опроса входов после старта
 GTimer timerPrxSensorFeedbackDelay;
 GTimer timerSensSupplyCheck;
+GTimer timerPjonFaultDetector;
 
 GFilterRA ps_voltage_filter;
 GFilterRA sens_voltage_filter;
@@ -69,6 +70,7 @@ void TaskPjonTransmitter(void *pvParameters);
 void TaskVoltageMeasurement(void *pvParameters);
 void TaskModBusPool(void *pvParameters);
 void TaskOwScanner(void *pvParameters);
+void TaskPjonReceiver(void *pvParameters);
 
 #if (DEBUG_GENERAL)
 void TaskDebug(void *pvParameters);
@@ -82,6 +84,7 @@ TaskHandle_t TaskPjonTransmitt_Handler;
 TaskHandle_t TaskVoltageMeasurement_Handler;
 TaskHandle_t TaskModBusPool_Handler;
 TaskHandle_t TaskOwScanner_Handler;
+TaskHandle_t TaskPjonReceiver_Handler;
 
 //functions
 void fnMenuStaticDataUpdate(void);
@@ -110,6 +113,14 @@ ISR(TIMER3_A)
       digitalWrite(WDT_RESET_OUT, main_data.wdt_reset_output_state);
 }
 
+ISR(TIMER4_A)
+{
+     //bus.update();
+     //pjon_RX_response = bus.receive(1000); // прием данных PJON и возврат результата приёма 
+}
+
+      
+
 //>>>>>>>>>>>>> SETUP >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 void setup()
@@ -117,6 +128,8 @@ void setup()
 
       Timer3.setPeriod(WDT_RESET_PERIOD); // Устанавливаем период таймера 500000 мкс -> 0.5 гц (сброс внешнего WDT)
       Timer3.enableISR(CHANNEL_A);
+      Timer4.setPeriod(10000);
+      Timer4.enableISR(CHANNEL_A);
 
       fnIOInit();
 
@@ -197,6 +210,8 @@ void setup()
       timerPrxSensorFeedbackDelay.setInterval(PRX_SENSOR_FEEDBACK_DELAY);
       timerSensSupplyCheck.setMode(MANUAL);
       timerSensSupplyCheck.setInterval(SENS_SUPPLY_CHECK_START_DELAY);
+      timerPjonFaultDetector.setMode(MANUAL);
+      timerPjonFaultDetector.setInterval(setpoints_data.pjon_sensor_fault_timer *1000);
 
       fnMenuStaticDataUpdate();
 
@@ -208,9 +223,6 @@ void setup()
       ModbusRTUServer.begin(2, main_data.mb_rates[setpoints_data.mb_baud_rate]); // настройка порта в файле RS485.cpp в конце
       ModbusRTUServer.configureCoils(0x00, 10);
       ModbusRTUServer.configureHoldingRegisters(0x00, 10);
-
-      pjon_sensor_fault_cnt = setpoints_data.pjon_sensor_fault_timer; //
-     
 
       timerConverterShutdownDelay.setInterval((setpoints_data.converter_shutdown_delay) * MINUTE);
 
@@ -256,7 +268,7 @@ void setup()
       xTaskCreate(
           TaskPjonTransmitter, "PjonTransmitt" // A name just for humans
           ,
-          120 // This stack size can be checked & adjusted by reading the Stack Highwater // 512
+          128 // This stack size can be checked & adjusted by reading the Stack Highwater // 512
           ,
           NULL, 2 // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
           ,
@@ -288,6 +300,18 @@ void setup()
           NULL, 3 // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
           ,
           &TaskOwScanner_Handler);
+
+
+      xTaskCreate(
+          TaskPjonReceiver, "PjReceiver" // A name just for humans
+          ,
+          128 // This stack size can be checked & adjusted by reading the Stack Highwater
+          ,
+          NULL, 2 // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+          ,
+          &TaskPjonReceiver_Handler);
+
+ 
 
 #if (DEBUG_GENERAL)
       xTaskCreate(TaskDebug,
@@ -893,7 +917,7 @@ void fnMenuDynamicDataUpdate(void)
             }
 
 
-            switch (pjon_TX_water_sensor_response)
+            switch (pjon_RX_response)
             {
             case PJON_ACK:
                   myNex.writeStr(F("p8t11.txt"), F("ACK"));
@@ -1546,14 +1570,16 @@ void pj_receiver_function(uint8_t *payload, uint16_t length, const PJON_Packet_I
             case  WATER_FLOAT_SENSOR_PJ:  
                   if(receive_from_ID == PJON_WATER_FLOAT_SENSOR_ID){             
                         memcpy(&pjon_sensor_receive_data, payload, sizeof(pjon_sensor_receive_data)); //... копируем данные в соответствующую структуру
-                        pjon_sensor_fault_cnt = 0; 
+                        timerPjonFaultDetector.setInterval(setpoints_data.pjon_sensor_fault_timer *1000);
+                        flag_pjon_water_sensor_connected = true;
                   }
                   break;
 
             case WATER_FLOW_SENSOR_PJ:
                   if(receive_from_ID == PJON_WATER_FLOW_SENSOR_ID){             
                         memcpy(&pjon_sensor_receive_data, payload, sizeof(pjon_sensor_receive_data)); //... копируем данные в соответствующую структуру
-                        pjon_sensor_fault_cnt = 0; 
+                        timerPjonFaultDetector.setInterval(setpoints_data.pjon_sensor_fault_timer *1000);
+                        flag_pjon_water_sensor_connected = true; 
                   }
                   break;
 
@@ -1663,30 +1689,19 @@ void fnWaterLevelControl(MyData& data, PjonReceive& pj_sensor_receive_data, Setp
 // fnPjonSender
 void fnPjonSender(void)
 {
-
-      if (!bus.update())
+      switch (setpoints_data.water_sensor_type_selection)
       {
+      case WATER_FLOAT_SENSOR_PJ:
+            pjon_TX_water_sensor_response = bus.send_packet(PJON_WATER_FLOAT_SENSOR_ID, "R", 1); //отправляем запрос к датчику уровня воды
+            break;
 
-            switch (setpoints_data.water_sensor_type_selection)
-            {
-            case WATER_FLOAT_SENSOR_PJ:
-                  pjon_TX_water_sensor_response = bus.send_packet(PJON_WATER_FLOAT_SENSOR_ID, "R", 1); //отправляем запрос к датчику уровня воды
-                  if (pjon_sensor_fault_cnt < setpoints_data.pjon_sensor_fault_timer)
-                        pjon_sensor_fault_cnt++;
-                  break;
+      case WATER_FLOW_SENSOR_PJ:
+            pjon_TX_water_sensor_response = bus.send_packet(PJON_WATER_FLOW_SENSOR_ID, "R", 1); //отправляем запрос к датчику протечки воды
+            break;
 
-            case WATER_FLOW_SENSOR_PJ:
-                  pjon_TX_water_sensor_response = bus.send_packet(PJON_WATER_FLOW_SENSOR_ID, "R", 1); //отправляем запрос к датчику протечки воды
-                  if (pjon_sensor_fault_cnt < setpoints_data.pjon_sensor_fault_timer)
-                        pjon_sensor_fault_cnt++;
-                  break;
-
-            default:
-                  break;
-            }
-
-           
-      }
+      default:
+            break;
+      }                 
 }
 //*******************************************************************************************
 
@@ -1786,15 +1801,20 @@ void TaskLoop(void *pvParameters __attribute__((unused))) // This is a Task.
             else
                   myNex.writeStr("sleep=0");
 
-      //******* Pjon float sensor fault detection
-            if (pjon_sensor_fault_cnt >= setpoints_data.pjon_sensor_fault_timer) // если больше n запросов сенсору без ответа
-            {
+      //******* Pjon sensor fault detection
+            if(timerPjonFaultDetector.isReady()){
+                  timerPjonFaultDetector.setInterval(setpoints_data.pjon_sensor_fault_timer *1000);
                   pjon_sensor_receive_data.value = 0; // обнуляем значение уровня воды
                   flag_pjon_water_sensor_connected = false;
             }
 
-            if (pjon_sensor_fault_cnt == 0)
-                  flag_pjon_water_sensor_connected = true;
+            else{
+
+                  //flag_pjon_water_sensor_connected = true;
+
+            }
+
+      
 
             if (flag_pjon_water_sensor_connected != flag_pjon_water_sensor_connected_old_state)
             {
@@ -1882,17 +1902,14 @@ void TaskPjonTransmitter(void *pvParameters __attribute__((unused)))
 {
       while (1)
       {
-            
-            if (timerPjonTransmittPeriod.isReady())
-            {
-                  fnPjonSender();
-            }
+            bus.update();
 
-            pjon_RX_response = bus.receive(2000); // прием данных PJON и возврат результата приёма
-            
+            if(timerPjonTransmittPeriod.isReady()) fnPjonSender();
+            pjon_RX_response = bus.receive(2000); // прием данных PJON и возврат результата приёма                        
 
-            vTaskDelay(2); //  * 15 ms
+            vTaskDelay(1); //  * 15 ms
       }
+
 }
 //********************************************************************
 
@@ -2422,4 +2439,18 @@ void fnAlarms(MyData& data, Alarms& alarms){
       }
       else data.common_alarm = false;
 
+}
+
+//**********************************
+ 
+void TaskPjonReceiver(void *pvParameters __attribute__((unused)))
+{
+      while (1)
+      {
+           // bus.update();
+            //pjon_RX_response = bus.receive(2000); // прием данных PJON и возврат результата приёма  
+
+            vTaskDelay(1); // *15 ms
+
+      }
 }
