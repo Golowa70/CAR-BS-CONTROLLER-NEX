@@ -4,8 +4,8 @@
 #include <Arduino.h>
 
 #define DEBUG_GENERAL   1
-#define DEBUG_RTOS      1
-#define DEBUG_ERROR_LOG 0
+#define DEBUG_RTOS      0
+#define DEBUG_ERROR_LOG 1
 
 //colors
 #define WHITE       65535
@@ -123,6 +123,7 @@
 #define DIVISION_RATIO_SENS_SUPPLY_INPUT  0.0102  // разрешение 0.0025 уможить на коэфициент деления предусилителя 4.16
 #define DIVISION_RATIO_RESIST_SENSOR  0.278       //
 
+#define MS_100        100           //  100ms
 #define SECOND       1000           //ms  секунда
 #define MINUTE       60000          //ms  минута
 #define HOUR         3600000        //ms  час
