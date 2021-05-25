@@ -113,14 +113,6 @@ ISR(TIMER3_A)
       digitalWrite(WDT_RESET_OUT, main_data.wdt_reset_output_state);
 }
 
-ISR(TIMER4_A)
-{
-     //bus.update();
-     //pjon_RX_response = bus.receive(1000); // прием данных PJON и возврат результата приёма 
-}
-
-      
-
 //>>>>>>>>>>>>> SETUP >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 void setup()
@@ -128,8 +120,7 @@ void setup()
 
       Timer3.setPeriod(WDT_RESET_PERIOD); // Устанавливаем период таймера 500000 мкс -> 0.5 гц (сброс внешнего WDT)
       Timer3.enableISR(CHANNEL_A);
-      Timer4.setPeriod(10000);
-      Timer4.enableISR(CHANNEL_A);
+      
 
       fnIOInit();
 
@@ -197,7 +188,7 @@ void setup()
       timerLowUConverterOffDelay.setMode(MANUAL);
       timerLowUConverterOffDelay.setInterval(((uint32_t)setpoints_data.lowUconverter_off_delay) * MINUTE);
       timerConverterShutdownDelay.setMode(MANUAL);
-      timerPjonTransmittPeriod.setInterval(setpoints_data.pjon_transmitt_period * SECOND);
+      timerPjonTransmittPeriod.setInterval(setpoints_data.pjon_transmitt_period * MS_100);
       timerShutdownDelay.setMode(MANUAL);
       timerShutdownDelay.setInterval(setpoints_data.shutdown_delay * HOUR);
       timerScreenOffDelay.setMode(MANUAL);
@@ -270,7 +261,7 @@ void setup()
           ,
           128 // This stack size can be checked & adjusted by reading the Stack Highwater // 512
           ,
-          NULL, 2 // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+          NULL, 3 // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
           ,
           &TaskPjonTransmitt_Handler);
 
@@ -917,7 +908,7 @@ void fnMenuDynamicDataUpdate(void)
             }
 
 
-            switch (pjon_RX_response)
+            switch (pjon_TX_water_sensor_response)
             {
             case PJON_ACK:
                   myNex.writeStr(F("p8t11.txt"), F("ACK"));
@@ -1269,7 +1260,7 @@ void trigger4()
 {
       EEPROM.updateBlock(EEPROM_SETPOINTS_ADDRESS, setpoints_data);
       memcpy(&old_setpoints_data, &setpoints_data, sizeof(Setpoints));
-      timerPjonTransmittPeriod.setInterval(setpoints_data.pjon_transmitt_period * SECOND); // обновление интервала
+      timerPjonTransmittPeriod.setInterval(setpoints_data.pjon_transmitt_period * MS_100); // обновление интервала
       flag_value_changed = LOW;
 }
 //**********************************************************************************
@@ -1692,7 +1683,9 @@ void fnPjonSender(void)
       switch (setpoints_data.water_sensor_type_selection)
       {
       case WATER_FLOAT_SENSOR_PJ:
-            pjon_TX_water_sensor_response = bus.send_packet(PJON_WATER_FLOAT_SENSOR_ID, "R", 1); //отправляем запрос к датчику уровня воды
+            if(!bus.update()){
+                  pjon_TX_water_sensor_response = bus.send_packet(PJON_WATER_FLOAT_SENSOR_ID, "R", 1); //отправляем запрос к датчику уровня воды
+            }
             break;
 
       case WATER_FLOW_SENSOR_PJ:
@@ -1904,7 +1897,8 @@ void TaskPjonTransmitter(void *pvParameters __attribute__((unused)))
       {
             bus.update();
 
-            if(timerPjonTransmittPeriod.isReady()) fnPjonSender();
+            if(timerPjonTransmittPeriod.isReady())fnPjonSender();
+      
             pjon_RX_response = bus.receive(2000); // прием данных PJON и возврат результата приёма                        
 
             vTaskDelay(1); //  * 15 ms
