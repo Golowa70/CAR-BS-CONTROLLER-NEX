@@ -4,8 +4,8 @@
 #include <Arduino.h>
 
 #define DEBUG_GENERAL   1
-#define DEBUG_RTOS      0
-#define DEBUG_ERROR_LOG 1
+#define DEBUG_RTOS      1
+#define DEBUG_ERROR_LOG 0
 
 //colors
 #define WHITE       65535
@@ -17,6 +17,8 @@
 #define RED         57543
 #define BLUE_2         31
 #define CYAN         2831
+#define UNSAVED_ITEM_COLOR  YELLOW
+
 
 //timers
 #define TEMP_SENSORS_UPDATE_PERIOD   1000   //ms
