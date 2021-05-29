@@ -28,7 +28,6 @@ OneWire oneWire(ONE_WIRE_PIN);                                   // порт ш�
 DallasTemperature temp_sensors(&oneWire);                        // привязка библиотеки DallasTemperature к библиотеке OneWire
 DeviceAddress thermometerID_1, thermometerID_2, thermometerID_3; // резервируем адреса для трёх датчиков
 
-GTimer timerTempSensorsUpdate; //таймер период обновления датчиков температуры
 GTimer timerPumpOffDelay;      //
 GTimer timerLowUConverterOffDelay;
 GTimer timerConverterShutdownDelay;
@@ -173,7 +172,6 @@ void setup()
       temp_sensors.setResolution(thermometerID_3, TEMPERATURE_PRECISION);
       temp_sensors.setWaitForConversion(false);
 
-      timerTempSensorsUpdate.setInterval(TEMP_SENSORS_UPDATE_PERIOD);
       timerPumpOffDelay.setMode(MANUAL);
       timerLowUConverterOffDelay.setMode(MANUAL);
       timerLowUConverterOffDelay.setInterval(((uint32_t)setpoints_data.lowUconverter_off_delay) * MINUTE);
@@ -242,7 +240,7 @@ void setup()
           ,
           240 // This stack size can be checked & adjusted by reading the Stack Highwater //128
           ,
-          NULL, 1 // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+          NULL, 3 // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
           ,
           &TaskTempSensorsUpdate_Handler);
 
@@ -1830,9 +1828,7 @@ void TaskMenuUpdate(void *pvParameters __attribute__((unused)))
                   else
                         myNex.writeNum(F("p16t4.bco"), CYAN);
 
-                  break;
-
-                  
+                  break;                 
 
             default:
                   break;
@@ -1858,35 +1854,73 @@ void TaskTempSensorsUpdate(void *pvParameters __attribute__((unused)))
 {
       while (1)
       {
-
             struct MyData localMainData;
             xQueuePeek(mainDataQueue, &localMainData, 1);
+
+            static uint8_t temp_cnt;  
+            static uint8_t alarm_cnt; 
 
             flag_ds18b20_update = 1 - flag_ds18b20_update;
             if (!flag_ds18b20_update)
                   temp_sensors.requestTemperatures(); //команда начала преобразования
             else
-            {
-                  localMainData.inside_temperature = temp_sensors.getTempC(thermometerID_1); // считывание температуры
-                  localMainData.outside_temperature = temp_sensors.getTempC(thermometerID_2);
-                  localMainData.spare_temperature = temp_sensors.getTempC(thermometerID_3);
+            {      
+                  if(temp_cnt >= MAX_TEMP_SENSORS)temp_cnt = 0;
+                  temp_cnt++;              
+
+
+                  switch (temp_cnt)
+                  {
+                  case 1:
+                        localMainData.inside_temperature = temp_sensors.getTempC(thermometerID_1);
+                        break;
+
+                  case 2:
+                        localMainData.outside_temperature = temp_sensors.getTempC(thermometerID_2);
+                        break;
                   
-
-                  if( (localMainData.inside_temperature == DEVICE_DISCONNECTED_C) ||     \
-                    (localMainData.outside_temperature == DEVICE_DISCONNECTED_C) ||      \
-                    (localMainData.spare_temperature == DEVICE_DISCONNECTED_C)) {
-                       present_alarms.temp_sensors = true; 
+                  case 3:
+                        localMainData.spare_temperature = temp_sensors.getTempC(thermometerID_3);
+                        break;
+                  
+                  default:
+                        temp_cnt = 0;
+                        break;
                   }
-                  else{
-                       present_alarms.temp_sensors = false; 
-                  }
 
 
+                  if(setpoints_data.num_found_temp_sensors > 0){
+
+                        alarm_cnt = setpoints_data.num_found_temp_sensors;
+                        present_alarms.temp_sensors = false;
+
+
+                        do{
+                              switch (alarm_cnt)
+                              {
+                              case 1:
+                                    if(localMainData.inside_temperature == DEVICE_DISCONNECTED_C)present_alarms.temp_sensors = true;
+                                    break;
+
+                              case 2:
+                                    if(localMainData.outside_temperature == DEVICE_DISCONNECTED_C)present_alarms.temp_sensors = true;
+                                    break;
+                              
+                              case 3:
+                                    if(localMainData.spare_temperature == DEVICE_DISCONNECTED_C)present_alarms.temp_sensors = true;
+                                    break;
+                              
+                              default:
+                                    break;
+                              }
+
+                        }while(alarm_cnt--);
+                  }            
             }
 
             xQueueOverwrite(mainDataQueue, &localMainData);
 
-            vTaskDelay(35); // * 15 ms
+            vTaskDelay( 250 / portTICK_PERIOD_MS );
       }
 }
 //***************************************************************
@@ -1898,11 +1932,9 @@ void TaskPjonTransmitter(void *pvParameters __attribute__((unused)))
       {
             struct MyData localMainData;
 
-            bus.update();
-
-            if (timerPjonTransmittPeriod.isReady())
-                  fnPjonSender();
-
+            if (timerPjonTransmittPeriod.isReady()){
+                  if(!bus.update())fnPjonSender();
+            }
             pjon_RX_response = bus.receive(2000); // прием данных PJON и возврат результата приёма
 
             vTaskDelay(1); //  * 15 ms
@@ -1959,15 +1991,16 @@ void TaskOwScanner(void *pvParameters __attribute__((unused)))
 
             if (flag_ow_scan_to_start)
             {
-
+                  taskENTER_CRITICAL();
+            
+               
                   if (!flag_ow_scanned)
                   {
-
+                        setpoints_data.num_found_temp_sensors = 0;
                         myNex.writeStr("p9t0.txt", "SCANNING...");
                         delay(1000);
 
                         uint8_t address[8];
-                        uint8_t count_sensors = 0;
                         String tempString = "";
                         String tempString2;
 
@@ -1976,9 +2009,9 @@ void TaskOwScanner(void *pvParameters __attribute__((unused)))
 
                               do
                               {
-                                    count_sensors++;
+                                    setpoints_data.num_found_temp_sensors++;
 
-                                    switch (count_sensors)
+                                    switch (setpoints_data.num_found_temp_sensors)
                                     {
                                     case 1:
                                           for (uint8_t j = 0; j < 8; j++)
@@ -2028,61 +2061,19 @@ void TaskOwScanner(void *pvParameters __attribute__((unused)))
                                           break;
                                     }
 
-                                    if (count_sensors > 3)
+                                    if (setpoints_data.num_found_temp_sensors > 3)
                                           break; // если найдено больше трёх датчиков - выходим из цикла
 
                               } while (oneWire.search(address));
                         }
 
-                        if (count_sensors)
+                        if (setpoints_data.num_found_temp_sensors)
                         {
-                              if (count_sensors < 3)
+                              if (setpoints_data.num_found_temp_sensors < 3)
                               {
 
-                                    switch (count_sensors)
+                                    switch (setpoints_data.num_found_temp_sensors)
                                     {
-
-                                    case 0:
-                                          for (uint8_t j = 0; j < 8; j++)
-                                          {
-                                                setpoints_data.sensors_ID_array[INSIDE_SENSOR - 1][j] = 0;
-                                                thermometerID_1[j] = 0;
-                                                tempString2 = String(0, HEX);
-                                                tempString += tempString2;
-                                                if (j < 7)
-                                                      tempString += ". ";
-                                          }
-                                          myNex.writeStr("p9t2.txt", tempString);
-                                          tempString = "";
-                                          tempString2 = "";
-
-                                          for (uint8_t j = 0; j < 8; j++)
-                                          {
-                                                setpoints_data.sensors_ID_array[OUTSIDE_SENSOR - 1][j] = 0;
-                                                thermometerID_2[j] = 0;
-                                                tempString2 = String(0, HEX);
-                                                tempString += tempString2;
-                                                if (j < 7)
-                                                      tempString += ". ";
-                                          }
-                                          myNex.writeStr("p9t3.txt", tempString);
-                                          tempString = "";
-                                          tempString2 = "";
-
-                                          for (uint8_t j = 0; j < 8; j++)
-                                          {
-                                                setpoints_data.sensors_ID_array[SPARE_SENSOR - 1][j] = 0;
-                                                thermometerID_3[j] = 0;
-                                                tempString2 = String(0, HEX);
-                                                tempString += tempString2;
-                                                if (j < 7)
-                                                      tempString += ". ";
-                                          }
-                                          myNex.writeStr("p9t4.txt", tempString);
-                                          tempString = "";
-                                          tempString2 = "";
-
-                                          break;
 
                                     case 1:
                                           for (uint8_t j = 0; j < 8; j++)
@@ -2134,7 +2125,7 @@ void TaskOwScanner(void *pvParameters __attribute__((unused)))
                               }
 
                               tempString = "FOUND ";
-                              tempString2 = String(count_sensors, HEX);
+                              tempString2 = String(setpoints_data.num_found_temp_sensors, DEC);
                               tempString += tempString2;
                               tempString2 = " SENSORS";
                               tempString += tempString2;
@@ -2150,11 +2141,51 @@ void TaskOwScanner(void *pvParameters __attribute__((unused)))
                         }
                         else
                         {
+                              for (uint8_t j = 0; j < 8; j++)
+                              {
+                                    setpoints_data.sensors_ID_array[INSIDE_SENSOR - 1][j] = 0;
+                                    thermometerID_1[j] = 0;
+                                    tempString2 = String(0, HEX);
+                                    tempString += tempString2;
+                                    if (j < 7)
+                                          tempString += ". ";
+                              }
+                              myNex.writeStr("p9t2.txt", tempString);
+                              tempString = "";
+                              tempString2 = "";
+
+                              for (uint8_t j = 0; j < 8; j++)
+                              {
+                                    setpoints_data.sensors_ID_array[OUTSIDE_SENSOR - 1][j] = 0;
+                                    thermometerID_2[j] = 0;
+                                    tempString2 = String(0, HEX);
+                                    tempString += tempString2;
+                                    if (j < 7)
+                                          tempString += ". ";
+                              }
+                              myNex.writeStr("p9t3.txt", tempString);
+                              tempString = "";
+                              tempString2 = "";
+
+                              for (uint8_t j = 0; j < 8; j++)
+                              {
+                                    setpoints_data.sensors_ID_array[SPARE_SENSOR - 1][j] = 0;
+                                    thermometerID_3[j] = 0;
+                                    tempString2 = String(0, HEX);
+                                    tempString += tempString2;
+                                    if (j < 7)
+                                          tempString += ". ";
+                              }
+                              myNex.writeStr("p9t4.txt", tempString);
+                              tempString = "";
+                              tempString2 = "";
+
                               myNex.writeStr("p9t0.txt", "NO SENSOR FOUND");
                               myNex.writeStr("p9b0.txt", "Exit");
                         }
 
                         flag_ow_scanned = HIGH;
+                        present_alarms.temp_sensors = false; 
                   }
                   else
                   {
@@ -2163,6 +2194,8 @@ void TaskOwScanner(void *pvParameters __attribute__((unused)))
                         EEPROM.updateBlock(EEPROM_SETPOINTS_ADDRESS, setpoints_data);
                         taskEXIT_CRITICAL();
                   }
+
+                  taskEXIT_CRITICAL();
             }
 
             flag_ow_scan_to_start = FALSE;
@@ -2254,6 +2287,8 @@ void TaskDebug(void *pvParameters)
             Serial.println(localMainData.sensors_supply_voltage * 10);
             Serial.print F("localMainData.res_sensor_resistance:  ");
             Serial.println(localMainData.res_sensor_resistance);
+            Serial.print F("setpoints_data.num_found_temp_sensors:  ");
+            Serial.println(setpoints_data.num_found_temp_sensors);
 
             Serial.print F("myNex.currentPageId:  ");
             Serial.println(myNex.currentPageId);

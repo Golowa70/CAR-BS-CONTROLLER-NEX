@@ -56,7 +56,7 @@ struct Setpoints
   uint8_t buzzer_out_mode;
   uint8_t scrreen_off_delay;  //
   uint8_t resistive_sensor_nominal;    // 
-  uint8_t buzzer_melody_3;    // NOT USED
+  uint8_t num_found_temp_sensors;    // 
   uint8_t buzzer_melody_4;    // NOT USED
   uint8_t voltage_correction; // 127 - нолевая коррекция
   uint8_t shutdown_delay;
@@ -78,6 +78,7 @@ struct MyData
   float spare_temperature;        // температура третьего датчика(пока не используется)
   float sensors_supply_voltage;   // напряжение питания датчиков 5в
   float res_sensor_resistance;    // сопротивление резистивного датчика
+  uint8_t num_found_temp_sensors;
   uint8_t water_level_percent;    // уровень воды в процентах
   uint8_t water_level_liter;      // уровень воды в литрах
   bool door_switch_state;         // состояние концевика задней двери

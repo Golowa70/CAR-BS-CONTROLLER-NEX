@@ -64,7 +64,7 @@ void fnDefaultSetpointsInit(void){
     setpoints_data.buzzer_out_mode = ON_MODE;
     setpoints_data.scrreen_off_delay = 5; // 5 секунд
     setpoints_data.resistive_sensor_nominal = 190;
-    setpoints_data.buzzer_melody_3 = 0;
+    setpoints_data.num_found_temp_sensors = 0;
     setpoints_data.buzzer_melody_4 = 0;
     setpoints_data.voltage_correction = 127; // 
     setpoints_data.shutdown_delay = 1; // час
