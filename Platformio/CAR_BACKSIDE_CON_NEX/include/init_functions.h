@@ -57,20 +57,23 @@ void fnDefaultSetpointsInit(void){
     setpoints_data.convertet_out_mode = AUTO_MODE;
     setpoints_data.light_off_delay = 10; // мин
     setpoints_data.pjon_ID = 2;
-    setpoints_data.pjon_sensor_fault_timer = 5; // сек
-    setpoints_data.pjon_transmitt_period = 2;  // сек
+    setpoints_data.pjon_sensor_fault_timer = 2; // 
+    setpoints_data.pjon_transmitt_period = 2;  // *100 мсек
     setpoints_data.mb_slave_ID = 2;
-    setpoints_data.mb_baud_rate = 1; //1-9600, 2-19200, 3-38400 ...
+    setpoints_data.mb_baud_rate = 2; //1-9600, 2-19200, 3-38400 ...
     setpoints_data.buzzer_out_mode = ON_MODE;
     setpoints_data.scrreen_off_delay = 5; // 5 секунд
-    setpoints_data.resistive_sensor_nominal = 190;
-    setpoints_data.num_found_temp_sensors = 0;
-    setpoints_data.buzzer_melody_4 = 0;
-    setpoints_data.voltage_correction = 127; // 
+    setpoints_data.resistive_sensor_nominal = 192;
+    setpoints_data.num_found_temp_sensors = 0; 
+    setpoints_data.buzzer_melody_4 = 0; // не используется
+    setpoints_data.voltage_correction = 96; // 
     setpoints_data.shutdown_delay = 1; // час
     setpoints_data.lcd_brightness = 90;   
     setpoints_data.logo_selection = 0;
-    setpoints_data.water_sensor_type_selection = 0;
+    setpoints_data.water_sensor_type_selection = WATER_RESISTIVE_SENSOR;
+    setpoints_data.sensors_select_array[INSIDE_SENSOR - 1];
+    setpoints_data.sensors_select_array[OUTSIDE_SENSOR - 1];
+    setpoints_data.sensors_select_array[SPARE_SENSOR - 1];
     
 }
 

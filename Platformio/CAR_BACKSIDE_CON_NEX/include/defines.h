@@ -63,7 +63,7 @@
 //eeprom
 #define EEPROM_SETPOINTS_ADDRESS  0
 #define EEPROM_ERROR_LOG_ADDRES    64
-#define MAGIC_KEY                 0x123456//7   //ключь для определения записаны ли уставки в память EEPROM
+#define MAGIC_KEY                 0xAB   //ключь для определения записаны ли уставки в память EEPROM
 //#define MAGIC_KEY_PART_1          0x1234567   // вариант с двумя частями один в начале второй в конце
 //#define MAGIC_KEY_PART_2          0x7654321
 
@@ -131,8 +131,7 @@
 #define HOUR         3600000        //ms  час
 
 
-#define INPUTS_UPDATE_PERIOD   50        //ms период обновления опроса входов
-#define START_DELAY            3000       //ms задержка опроса входов после подачи питания (пока датчики запустятся)
+#define START_DELAY            3000       //ms задержка выполнения некоторых функций после подачи питания (пока датчики запустятся)
 #define PRX_SENSOR_FEEDBACK_DELAY   500   //ms задержка реакции датчика приближения (для стабильности)
 #define WDT_RESET_PERIOD        500000  // us период сброса ADM705 < 1.6 sec
 

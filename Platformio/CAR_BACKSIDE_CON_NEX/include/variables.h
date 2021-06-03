@@ -36,7 +36,7 @@ bool flag_timer_light_delay_off_started; // флаг состояния тайм
 
 struct Setpoints
 { // структура для уставок
-  uint32_t magic_key;
+  uint8_t magic_key;
   uint8_t pump_off_delay;
   uint8_t resistive_sensor_correction; // 0- нолевая коррекция
   uint8_t water_tank_capacity;
@@ -66,7 +66,7 @@ struct Setpoints
   uint8_t sensors_ID_array[MAX_TEMP_SENSORS][8];
   uint8_t sensors_select_array[MAX_TEMP_SENSORS]; // inside, outside, spare
 } setpoints_data, default_setpoints_data, old_setpoints_data;
-// 57 byte
+// 54 byte
 //********** end setpoints variables ******************************************************************
 
 //*********** Main data *******************************************************************************
@@ -93,6 +93,7 @@ struct MyData
   bool screen_sleep_mode;         // флаг спящего режима экрана Nextion
   bool low_washer_water_level;    // низкий уровень воды в бачке омывателя
   bool common_alarm;
+  bool flag_system_started;
   uint16_t mb_rates[6] = {4800, 7200, 9600, 19200, 38400, 57600};   // скорость связи по протоколу ModBus
 } main_data;
 
@@ -125,7 +126,6 @@ bool flag_convOff_due_ign_switch; // флаг что конветер был в�
 uint8_t inputs_undebounced_sample = 0;
 uint8_t inputs_debounced_state = 0;
 
-bool flag_error_present = false;
 //***********************************************************************************
 
 //********* ERROR LOG ***************************************************************
@@ -145,5 +145,7 @@ struct Alarms
   bool resist_sensor;
   bool common;
 } present_alarms,old_alarms;
+
+
 
 #endif

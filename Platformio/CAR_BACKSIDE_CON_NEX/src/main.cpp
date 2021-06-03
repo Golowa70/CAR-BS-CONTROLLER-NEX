@@ -20,6 +20,7 @@
 #include <timers.h>
 #include "PJONSoftwareBitBang.h"
 #include <queue.h>
+#include <semphr.h>
 
 PJONSoftwareBitBang bus;
 
@@ -28,14 +29,13 @@ OneWire oneWire(ONE_WIRE_PIN);                                   // порт ш�
 DallasTemperature temp_sensors(&oneWire);                        // привязка библиотеки DallasTemperature к библиотеке OneWire
 DeviceAddress thermometerID_1, thermometerID_2, thermometerID_3; // резервируем адреса для трёх датчиков
 
-GTimer timerPumpOffDelay;      //
+GTimer timerPumpOffDelay; //
 GTimer timerLowUConverterOffDelay;
 GTimer timerConverterShutdownDelay;
 GTimer timerPjonTransmittPeriod;
 GTimer timerShutdownDelay;
 GTimer timerMenuDynamicUpdate;
 GTimer timerScreenOffDelay;
-GTimer timerInputsUpdate; // таймер период обновления входов
 GTimer timerStartDelay;   // таймер задержки опроса входов после старта
 GTimer timerPrxSensorFeedbackDelay;
 GTimer timerSensSupplyCheck;
@@ -48,12 +48,13 @@ GFilterRA resistive_sensor_filter;
 EasyNex myNex(Serial1);
 
 //мелодии
-const char *bip_1 = " Connect:d=4,o=6,b=2000:4g5,1p,2g";
-const char *bip_2 = " Disconnect:d=4,o=6,b=2000:4g,1p,2g5";
+
 const char *melody_1 = " melody1:d=4,o=7,b=1000:4c,4d,4e,4f,4g,4a,4h";
 const char *melody_2 = " melody2:d=4,o=7,b=500:4c,4d,4e,4f,4g,4a,4h";
 const char *melody_3 = " melody3:d=4,o=7,b=50:e";
-const char *melody_4 = " melody4:d=4,o=5,b=160:1p,e6,8p,e6,8p,e6,8p";
+const char *melody_4 = " melody4:d=4,o=5,b=160:1p,e6,8p,e6,8p,e6,8p"; // три длинных пика
+const char *bip_1 = " Connect:d=4,o=6,b=2000:4g5,1p,2g";
+const char *bip_2 = " Disconnect:d=4,o=6,b=2000:4g,1p,2g5";
 
 // FreeRTOS functions
 void TaskPilikalka(void *pvParameters);
@@ -64,6 +65,7 @@ void TaskPjonTransmitter(void *pvParameters);
 void TaskVoltageMeasurement(void *pvParameters);
 void TaskModBusPool(void *pvParameters);
 void TaskOwScanner(void *pvParameters);
+void TaskInputsUpdate(void *pvParameters);
 
 #if (DEBUG_GENERAL)
 void TaskDebug(void *pvParameters);
@@ -77,12 +79,16 @@ TaskHandle_t TaskPjonTransmitt_Handler;
 TaskHandle_t TaskVoltageMeasurement_Handler;
 TaskHandle_t TaskModBusPool_Handler;
 TaskHandle_t TaskOwScanner_Handler;
+TaskHandle_t TaskInputsUpdate_Handler;
+SemaphoreHandle_t OwScannerToStartSemaphore;
+SemaphoreHandle_t SystemStartedSemaphore;
+SemaphoreHandle_t AccessToMainDataMutex; // пока не используется
+QueueHandle_t SendToPilikalkaQueue;
 
 //functions
 void fnMenuStaticDataUpdate(void);
 void fnPumpControl(MyData &data);
-void fnOutputsUpdate(MyData &data);          // функция обновления выходов
-void fnInputsUpdate(MyData &data);           // функция обновления входов
+void fnOutputsUpdate(MyData &data);  // функция обновления выходов
 bool fnEEpromInit(void);             // функция загрузки уставок и проверка eeprom при старте
 bool fnReadErrorLogFromEeprom(void); //
 void fnConverterControl(MyData &data, Setpoints &setpoints);
@@ -100,8 +106,6 @@ ISR(TIMER3_A)
 {
       digitalWrite(WDT_RESET_OUT, !digitalRead(WDT_RESET_OUT));
 }
-
-QueueHandle_t mainDataQueue;
 
 //>>>>>>>>>>>>> SETUP >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -159,8 +163,8 @@ void setup()
 
       delay(1500);
 
-      ps_voltage_filter.setCoef(0.1); // установка коэффициента фильтрации (0.0... 1.0). Чем меньше, тем плавнее фильтр
-      ps_voltage_filter.setStep(50);  // установка шага фильтрации (мс). Чем меньше, тем резче фильтр
+      ps_voltage_filter.setCoef(0.05); // установка коэффициента фильтрации (0.0... 1.0). Чем меньше, тем плавнее фильтр
+      ps_voltage_filter.setStep(100);  // установка шага фильтрации (мс). Чем меньше, тем резче фильтр
       sens_voltage_filter.setCoef(0.1);
       sens_voltage_filter.setStep(50);
       resistive_sensor_filter.setCoef(0.02);
@@ -182,9 +186,7 @@ void setup()
       timerScreenOffDelay.setMode(MANUAL);
       timerScreenOffDelay.setInterval(10000);
       timerMenuDynamicUpdate.setInterval(MENU_UPDATE_PERIOD);
-      timerInputsUpdate.setInterval(INPUTS_UPDATE_PERIOD);
       timerStartDelay.setMode(MANUAL);
-      timerStartDelay.setInterval(START_DELAY);
       timerPrxSensorFeedbackDelay.setMode(MANUAL);
       timerPrxSensorFeedbackDelay.setInterval(PRX_SENSOR_FEEDBACK_DELAY);
       timerSensSupplyCheck.setMode(MANUAL);
@@ -211,7 +213,7 @@ void setup()
       xTaskCreate(
           TaskPilikalka, "Pilikalka" // A name just for humans
           ,
-          72 // This stack size can be checked & adjusted by reading the Stack Highwater //72
+          100 // This stack size can be checked & adjusted by reading the Stack Highwater //72
           ,
           NULL, 2 // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
           ,
@@ -220,7 +222,7 @@ void setup()
       xTaskCreate(
           TaskLoop, "Loop" // A name just for humans
           ,
-          240 // This stack size can be checked & adjusted by reading the Stack Highwater //192
+          192 // This stack size can be checked & adjusted by reading the Stack Highwater //192
           ,
           NULL, 1 // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
           ,
@@ -229,7 +231,7 @@ void setup()
       xTaskCreate(
           TaskMenuUpdate, "MenuUpdate" // A name just for humans
           ,
-          280 // This stack size can be checked & adjusted by reading the Stack Highwater //160
+          192 // This stack size can be checked & adjusted by reading the Stack Highwater //192
           ,
           NULL, 2 // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
           ,
@@ -238,7 +240,7 @@ void setup()
       xTaskCreate(
           TaskTempSensorsUpdate, "TempSensorsUpdate" // A name just for humans
           ,
-          240 // This stack size can be checked & adjusted by reading the Stack Highwater //128
+          192 // This stack size can be checked & adjusted by reading the Stack Highwater //128
           ,
           NULL, 3 // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
           ,
@@ -247,7 +249,7 @@ void setup()
       xTaskCreate(
           TaskPjonTransmitter, "PjonTransmitt" // A name just for humans
           ,
-          168 // This stack size can be checked & adjusted by reading the Stack Highwater // 128
+          192 // This stack size can be checked & adjusted by reading the Stack Highwater // 128
           ,
           NULL, 3 // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
           ,
@@ -256,7 +258,7 @@ void setup()
       xTaskCreate(
           TaskVoltageMeasurement, "VoltageMeasurement" // A name just for humans
           ,
-          220 // This stack size can be checked & adjusted by reading the Stack Highwater //120
+          168 // This stack size can be checked & adjusted by reading the Stack Highwater //120
           ,
           NULL, 1 // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
           ,
@@ -265,7 +267,7 @@ void setup()
       xTaskCreate(
           TaskModBusPool, "ModBusPool" // A name just for humans
           ,
-          690 // This stack size can be checked & adjusted by reading the Stack Highwater //690
+          700 // This stack size can be checked & adjusted by reading the Stack Highwater //690
           ,
           NULL, 2 // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
           ,
@@ -274,23 +276,34 @@ void setup()
       xTaskCreate(
           TaskOwScanner, "OwScanner" // A name just for humans
           ,
-          240 // This stack size can be checked & adjusted by reading the Stack Highwater //128
+          192 // This stack size can be checked & adjusted by reading the Stack Highwater //128
           ,
           NULL, 3 // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
           ,
           &TaskOwScanner_Handler);
 
+      xTaskCreate(
+          TaskInputsUpdate, "InputsUpdate" // A name just for humans
+          ,
+          192 // This stack size can be checked & adjusted by reading the Stack Highwater //128
+          ,
+          NULL, 3 // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+          ,
+          &TaskInputsUpdate_Handler);
+
       //**********************************************
 
-      mainDataQueue = xQueueCreate(1, sizeof(struct MyData)); //
-      xQueueSend(mainDataQueue, &main_data, 1);
+      OwScannerToStartSemaphore = xSemaphoreCreateBinary();
+      SystemStartedSemaphore = xSemaphoreCreateBinary();
+      AccessToMainDataMutex = xSemaphoreCreateMutex();
+      SendToPilikalkaQueue =  xQueueCreate(10, sizeof(uint8_t));
 
       //*********************************************
 
 #if (DEBUG_GENERAL)
       xTaskCreate(TaskDebug,
                   "Serial",
-                  240,
+                  210,
                   NULL,
                   1,
                   NULL);
@@ -319,6 +332,7 @@ void setup()
       }
 
       //rtttl :: begin (BUZZER, melody_2);   // пиликаем при старте
+      timerStartDelay.setInterval(START_DELAY);
 }
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -478,25 +492,21 @@ void trigger5()
 // trigger 6 ручное включение насоса
 void trigger6()
 {
-      struct MyData localMainData;
-      xQueuePeek(mainDataQueue, &localMainData, 1);
-
       current_item = myNex.readNumber("currentItem.val");
       current_item = myNex.readNumber("currentItem.val");
-      localMainData.pump_output_state = 1 - localMainData.pump_output_state;
-      if (localMainData.pump_output_state)
+      main_data.pump_output_state = 1 - main_data.pump_output_state;
+      if (main_data.pump_output_state)
             timerPumpOffDelay.setInterval(setpoints_data.pump_off_delay * SECOND);
       else
             timerPumpOffDelay.stop();
-
-      xQueueOverwrite(mainDataQueue, &localMainData);
 }
 //**********************************************************************************
 
 // trigger 7 сканнер 1Wire (перенесен в задачу)
 void trigger7()
 {
-      flag_ow_scan_to_start = TRUE;
+      //flag_ow_scan_to_start = TRUE;
+      xSemaphoreGive(OwScannerToStartSemaphore);
 }
 //*******************************************************************************
 
@@ -514,16 +524,11 @@ void trigger8()
 // trigger 9  Error log reset
 void trigger9()
 {
-      struct MyData localMainData;
-      xQueuePeek(mainDataQueue, &localMainData, 1);
-
       taskENTER_CRITICAL();
       memset(&ErrorLog, 0, sizeof(ErrorLog));
       EEPROM.updateBlock(EEPROM_ERROR_LOG_ADDRES, ErrorLog);
-      localMainData.common_alarm = false;
       taskEXIT_CRITICAL();
-
-      xQueueOverwrite(mainDataQueue, &localMainData);
+      main_data.common_alarm = false;
 }
 //******************************************************************************
 
@@ -538,14 +543,15 @@ void trigger10()
 void fnPumpControl(MyData &data)
 {
 
+      uint8_t melody_ID = 0;
       if (data.door_switch_state)
       {
             if ((data.proximity_sensor_state == HIGH) && (proximity_sensor_old_state == LOW) && (timerPrxSensorFeedbackDelay.isReady()))
             {
                   data.pump_output_state = 1 - data.pump_output_state;
                   timerPrxSensorFeedbackDelay.setInterval(PRX_SENSOR_FEEDBACK_DELAY);
-                  if (!rtttl::isPlaying())
-                        rtttl ::begin(BUZZER, melody_1);
+                  melody_ID = 1;
+                  xQueueSend(SendToPilikalkaQueue, &melody_ID, 0);
                   if (data.pump_output_state)
                         timerPumpOffDelay.setInterval(setpoints_data.pump_off_delay * SECOND);
                   else
@@ -568,48 +574,19 @@ void fnPumpControl(MyData &data)
 }
 //*******************************************************************************
 
-//Inputs Update
-void fnInputsUpdate(MyData &data)
-{ // функция обновления состояния входов (раз в   мсек)
-
-      if (!digitalRead(DOOR_SWITCH_INPUT_1))
-            inputs_undebounced_sample |= (1 << 0);
-      else
-            inputs_undebounced_sample &= ~(1 << 0);
-
-      if (!digitalRead(PROXIMITY_SENSOR_INPUT_2))
-            inputs_undebounced_sample |= (1 << 1);
-      else
-            inputs_undebounced_sample &= ~(1 << 1);
-
-      if (digitalRead(IGNITION_SWITCH_INPUT_3))
-            inputs_undebounced_sample |= (1 << 2);
-      else
-            inputs_undebounced_sample &= ~(1 << 2);
-
-      if (!digitalRead(LOW_WASHER_WATER_LEVEL_INPUT_4))
-            inputs_undebounced_sample |= (1 << 3);
-      else
-            inputs_undebounced_sample &= ~(1 << 3);
-
-      inputs_debounced_state = fnDebounce(inputs_undebounced_sample);
-
-      data.door_switch_state = (inputs_debounced_state & (1 << 0));
-      data.proximity_sensor_state = (inputs_debounced_state & (1 << 1));
-      data.ignition_switch_state = (inputs_debounced_state & (1 << 2));
-      data.low_washer_water_level = (inputs_debounced_state & (1 << 3));
-}
-//*******************************************************************************
-
 //Outputs Update
 void fnOutputsUpdate(MyData &data)
 { // функция обновления состояния выходов
 
-      digitalWrite(WATER_PUMP_OUTPUT_1, data.pump_output_state); //
-      digitalWrite(LIGHT_OUTPUT_2, data.light_output_state);     //
-      digitalWrite(CONVERTER_OUTPUT_3, data.converter_output_state);
-      digitalWrite(SENSORS_SUPPLY_5v, data.sensors_supply_output_state);
-      digitalWrite(MAIN_SUPPLY_OUT, data.main_supply_output_state);
+     // if (xSemaphoreTake(AccessToMainDataMutex, 10) == pdTRUE){
+            digitalWrite(WATER_PUMP_OUTPUT_1, data.pump_output_state); //
+            digitalWrite(LIGHT_OUTPUT_2, data.light_output_state);     //
+            digitalWrite(CONVERTER_OUTPUT_3, data.converter_output_state);
+            digitalWrite(SENSORS_SUPPLY_5v, data.sensors_supply_output_state);
+            digitalWrite(MAIN_SUPPLY_OUT, data.main_supply_output_state);
+     // }
+
+     // xSemaphoreGive(AccessToMainDataMutex);
 }
 //*******************************************************************************
 
@@ -619,19 +596,19 @@ bool fnEEpromInit(void)
 
       EEPROM.readBlock(EEPROM_SETPOINTS_ADDRESS, setpoints_data); // считываем уставки из eeprom
       if (setpoints_data.magic_key == MAGIC_KEY)
-      {                                      // если ключ совпадает значит не первый запуск
-           // digitalWrite(BUILTIN_LED, HIGH); // и зажигаем светодиод для индикации
-            return true;                     // возвращаем один
+      {                  // если ключ совпадает значит не первый запуск
+                         // digitalWrite(BUILTIN_LED, HIGH); // и зажигаем светодиод для индикации
+            return true; // возвращаем один
       }
       else // если ключ  не совпадает значит первый запуск
       {
             myNex.writeStr("p12t0.txt", "Writing defaults...");
             for (uint8_t i = 0; i < 3; i++)
             { // мигнём три раза
-                  digitalWrite(BUILTIN_LED, HIGH);
-                  delay(1000);
-                  digitalWrite(BUILTIN_LED, LOW);
-                  delay(1000);
+                //  digitalWrite(BUILTIN_LED, HIGH);
+                //  delay(1000);
+                //  digitalWrite(BUILTIN_LED, LOW);
+                //  delay(1000);
             }
 
             fnDefaultSetpointsInit();                                    // присвеиваем уставки по умолчанию
@@ -640,12 +617,12 @@ bool fnEEpromInit(void)
 
             if (setpoints_data.magic_key == MAGIC_KEY)
             { // проверяем ключ ещё раз
-                  digitalWrite(BUILTIN_LED, HIGH);
+                 // digitalWrite(BUILTIN_LED, HIGH);
                   return true;
             }
             else // если не совпадает значит проблемы с EEPROM
             {
-                  digitalWrite(BUILTIN_LED, LOW);
+                 // digitalWrite(BUILTIN_LED, LOW);
                   return false; // возвращаем ноль
             }
       }
@@ -683,7 +660,7 @@ void fnConverterControl(MyData &data, Setpoints &setpoints)
             }
 
             if (voltage > setpoints.converter_voltage_off)
-            {                                                                                                          //
+            {                                                                                                     //
                   timerLowUConverterOffDelay.setInterval(((uint32_t)setpoints.lowUconverter_off_delay) * MINUTE); // заряжаем таймер на выключение
             }
 
@@ -889,16 +866,56 @@ void fnPjonSender(void)
 // TaskPilikalka
 void TaskPilikalka(void *pvParameters __attribute__((unused))) // This is a Task.
 {
+      uint8_t local_melody_ID = 0;
+
       for (;;) // A Task shall never return or exit.
       {
-            if (setpoints_data.buzzer_out_mode)
+
+             if (!rtttl::isPlaying() && xQueueReceive(SendToPilikalkaQueue, &local_melody_ID, 0) == pdPASS){
+
+                        switch (local_melody_ID)
+                        {
+                              
+                        case 1: 
+                              rtttl ::begin(BUZZER, melody_1);
+                              break;
+
+                        case 2: 
+                              rtttl ::begin(BUZZER, melody_2);
+                              break;
+                        
+                        case 3: 
+                              rtttl ::begin(BUZZER, melody_3);
+                              break;
+
+                        case 4: 
+                              rtttl ::begin(BUZZER, melody_4);
+                              break;
+
+                        case 5: 
+                              rtttl ::begin(BUZZER, bip_1);
+                              break;
+
+                        case 6: 
+                              rtttl ::begin(BUZZER, bip_2);
+                              break;
+                        
+                        default:
+                              break;
+                        }
+                  }
+                  
+
+            if (setpoints_data.buzzer_out_mode){
+                  
                   rtttl ::play(); // обновление функции мелодии
+            }
             else
             {
                   rtttl::stop();
             }
 
-            vTaskDelay(4);
+            vTaskDelay(1);
       }
 }
 //*************************************************************************************
@@ -908,134 +925,135 @@ void TaskLoop(void *pvParameters) // This is a Task.
 {
       (void)pvParameters;
 
-      for (;;) // A Task shall never return or exit.
+      for (;;) 
       {
+            uint8_t melody_ID = 0;
+
             myNex.NextionListen();
+            if (myNex.currentPageId != ONEWIRESCANNER_PAGE){ // если не на странице сканнера то сбрасываем флаг
+                  flag_ow_scanned = LOW;
+            }
 
-            struct MyData localMainData;
+            if(timerStartDelay.isReady()){
+                  main_data.flag_system_started = true;
+                  xSemaphoreGive(SystemStartedSemaphore);
+            }
 
-            xQueuePeek(mainDataQueue, &localMainData, 1);
-           
+            fnMainPowerControl(main_data, setpoints_data, timerShutdownDelay); //
+
+            fnSensorsSupplyControl(main_data, timerSensSupplyCheck, present_alarms); //
+
+            fnResSensRead(main_data); //
+
+            fnOutputsUpdate(main_data);
+
+
+
+            // After start delay 
+            if(main_data.flag_system_started){
+
+                  fnPumpControl(main_data);
+
+                  fnConverterControl(main_data, setpoints_data);
+
+                  fnWaterLevelControl(main_data, pjon_sensor_receive_data, setpoints_data, present_alarms);
+
+                  fnAlarms(main_data, present_alarms, old_alarms, ErrorLog);
+
+                  
+                  //******* отслеживание изменения состояния двери для звуковой индикации
+                  if (main_data.door_switch_state != flag_door_switch_old_state)
+                  {
+                        flag_door_switch_old_state = main_data.door_switch_state;
+                        if (main_data.door_switch_state)
+                        {
+                              main_data.screen_sleep_mode = false; 
+
+                              melody_ID = 5;
+                              xQueueSend(SendToPilikalkaQueue, &melody_ID, 0);
+
+                              if (main_data.water_level_liter < 10 || main_data.water_level_percent < 25)
+                              {
+                              melody_ID = 4;
+                              xQueueSend(SendToPilikalkaQueue, &melody_ID, 0);
+                              
+                              }
+
+                        }
+                        else
+                        {
+                              melody_ID = 6;
+                              xQueueSend(SendToPilikalkaQueue, &melody_ID, 0);
+                        }
+                  }
+
+                  //****** таймер на отключение экрана
+                  if (main_data.door_switch_state)
+                  {
+                        timerScreenOffDelay.setInterval((uint32_t)setpoints_data.scrreen_off_delay * SECOND);
+                  }
+                  else
+                  {
+                        if (timerScreenOffDelay.isReady())
+                              main_data.screen_sleep_mode = true; //myNex.writeStr("sleep=1");
+                  }
+
+                  if (main_data.screen_sleep_mode)
+                        myNex.writeStr("sleep=1");
+                  else
+                        myNex.writeStr("sleep=0");
+
+
+                  //******* Pjon sensor fault detection *****************************************************
+                  if (timerPjonFaultDetector.isReady())
+                  {
+                        timerPjonFaultDetector.setInterval(setpoints_data.pjon_sensor_fault_timer * 1000);
+                        pjon_sensor_receive_data.value = 0; // обнуляем значение уровня воды
+                        flag_pjon_water_sensor_connected = false;
+                  }
+
+                  if (flag_pjon_water_sensor_connected != flag_pjon_water_sensor_connected_old_state)
+                  {
+
+                        if (!flag_pjon_water_sensor_connected)
+                        {
+                              melody_ID = 3;
+                              xQueueSend(SendToPilikalkaQueue, &melody_ID, 0);
+                        }
+                        else
+                        {
+                              melody_ID = 2;
+                              xQueueSend(SendToPilikalkaQueue, &melody_ID, 0);
+                        }
+
+                        flag_pjon_water_sensor_connected_old_state = flag_pjon_water_sensor_connected;
+                  }
+            }
+
 
             // ********* ModBus registers update ******************************
-            ModbusRTUServer.coilWrite(0x00, localMainData.ignition_switch_state);
-            ModbusRTUServer.coilWrite(0x01, localMainData.door_switch_state);
-            ModbusRTUServer.coilWrite(0x02, localMainData.proximity_sensor_state);
-            ModbusRTUServer.coilWrite(0x03, localMainData.pump_output_state);
-            ModbusRTUServer.coilWrite(0x04, localMainData.converter_output_state);
-            ModbusRTUServer.coilWrite(0x05, localMainData.light_output_state);
+            ModbusRTUServer.coilWrite(0x00, main_data.ignition_switch_state);
+            ModbusRTUServer.coilWrite(0x01, main_data.door_switch_state);
+            ModbusRTUServer.coilWrite(0x02, main_data.proximity_sensor_state);
+            ModbusRTUServer.coilWrite(0x03, main_data.pump_output_state);
+            ModbusRTUServer.coilWrite(0x04, main_data.converter_output_state);
+            ModbusRTUServer.coilWrite(0x05, main_data.light_output_state);
             ModbusRTUServer.coilWrite(0x06, flag_pjon_water_sensor_connected);
             ModbusRTUServer.coilWrite(0x07, flag_pjon_flow_sensor_connected);
-            ModbusRTUServer.coilWrite(0x08, localMainData.sensors_supply_output_state);
-            ModbusRTUServer.coilWrite(0x09, localMainData.low_washer_water_level); //
+            ModbusRTUServer.coilWrite(0x08, main_data.sensors_supply_output_state);
+            ModbusRTUServer.coilWrite(0x09, main_data.low_washer_water_level); //
 
-            ModbusRTUServer.holdingRegisterWrite(0x00, localMainData.battery_voltage * 10);
-            ModbusRTUServer.holdingRegisterWrite(0x01, localMainData.inside_temperature * 10);
-            ModbusRTUServer.holdingRegisterWrite(0x02, localMainData.outside_temperature * 10);
-            ModbusRTUServer.holdingRegisterWrite(0x03, localMainData.water_level_percent);
-            ModbusRTUServer.holdingRegisterWrite(0x04, localMainData.water_level_liter);
+            ModbusRTUServer.holdingRegisterWrite(0x00, main_data.battery_voltage * 10);
+            ModbusRTUServer.holdingRegisterWrite(0x01, main_data.inside_temperature * 10);
+            ModbusRTUServer.holdingRegisterWrite(0x02, main_data.outside_temperature * 10);
+            ModbusRTUServer.holdingRegisterWrite(0x03, main_data.water_level_percent);
+            ModbusRTUServer.holdingRegisterWrite(0x04, main_data.water_level_liter);
 
-            ModbusRTUServer.holdingRegisterWrite(0x05, localMainData.sensors_supply_voltage * 10);
-            ModbusRTUServer.holdingRegisterWrite(0x06, localMainData.res_sensor_resistance);
+            ModbusRTUServer.holdingRegisterWrite(0x05, main_data.sensors_supply_voltage * 10);
+            ModbusRTUServer.holdingRegisterWrite(0x06, main_data.res_sensor_resistance);
             ModbusRTUServer.holdingRegisterWrite(0x07, ErrorLog.pj_water_sensor_error_cnt);
             ModbusRTUServer.holdingRegisterWrite(0x08, ErrorLog.sens_supply_error_cnt);
             ModbusRTUServer.holdingRegisterWrite(0x09, ErrorLog.temp_sensors_error_cnt);
-
-            if (timerInputsUpdate.isReady() && timerStartDelay.isReady())
-                  fnInputsUpdate(localMainData);
-
-            if (myNex.currentPageId != ONEWIRESCANNER_PAGE)
-                  flag_ow_scanned = LOW;
-
-            fnConverterControl(localMainData, setpoints_data);
-
-            //******* отслеживание изменения состояния двери для звуковой индикации
-            if (localMainData.door_switch_state != flag_door_switch_old_state)
-            {
-                  flag_door_switch_old_state = localMainData.door_switch_state;
-                  if (localMainData.door_switch_state)
-                  {
-                        localMainData.screen_sleep_mode = false; //myNex.writeStr("sleep=0");
-
-                        if (localMainData.water_level_liter < 10 || localMainData.water_level_percent < 25)
-                        {
-                              if (!rtttl::isPlaying())
-                                    rtttl ::begin(BUZZER, melody_4);
-                        }
-
-                        if (!rtttl::isPlaying())
-                              rtttl ::begin(BUZZER, bip_1);
-                  }
-                  else
-                  {
-                        if (!rtttl::isPlaying())
-                              rtttl ::begin(BUZZER, bip_2);
-                  }
-            }
-
-            //****** таймер на отключение экрана
-            if (localMainData.door_switch_state)
-            {
-                  timerScreenOffDelay.setInterval((uint32_t)setpoints_data.scrreen_off_delay * SECOND);
-            }
-            else
-            {
-                  if (timerScreenOffDelay.isReady())
-                        localMainData.screen_sleep_mode = true; //myNex.writeStr("sleep=1");
-            }
-
-            if (localMainData.screen_sleep_mode)
-                  myNex.writeStr("sleep=1");
-            else
-                  myNex.writeStr("sleep=0");
-
-            //******* Pjon sensor fault detection *****************************************************
-            if (timerPjonFaultDetector.isReady())
-            {
-                  timerPjonFaultDetector.setInterval(setpoints_data.pjon_sensor_fault_timer * 1000);
-                  pjon_sensor_receive_data.value = 0; // обнуляем значение уровня воды
-                  flag_pjon_water_sensor_connected = false;
-            }
-
-
-            if (flag_pjon_water_sensor_connected != flag_pjon_water_sensor_connected_old_state)
-            {
-
-                  if (!flag_pjon_water_sensor_connected)
-                  {
-                        if (!rtttl::isPlaying())
-                              rtttl ::begin(BUZZER, melody_3);
-                  }
-                  else
-                  {
-                        if (!rtttl::isPlaying())
-                              rtttl ::begin(BUZZER, melody_2);
-                  }
-
-                  flag_pjon_water_sensor_connected_old_state = flag_pjon_water_sensor_connected;
-            }
-
-            //******* Water resistance sensor fault detection ****************************
-
-            //****************************************************************************
-
-            fnWaterLevelControl(localMainData, pjon_sensor_receive_data, setpoints_data, present_alarms);
-
-            fnMainPowerControl(localMainData, setpoints_data, timerShutdownDelay); //
-
-            fnSensorsSupplyControl(localMainData, timerSensSupplyCheck, present_alarms); //
-
-            fnResSensRead(localMainData); //
-
-            fnPumpControl(localMainData);
-
-            fnAlarms(localMainData, present_alarms, old_alarms, ErrorLog);
-
-            fnOutputsUpdate(localMainData);
-
-            
-            xQueueOverwrite(mainDataQueue, &localMainData);
-            
 
             vTaskDelay(1); // * 15 ms
       }
@@ -1043,24 +1061,21 @@ void TaskLoop(void *pvParameters) // This is a Task.
 //***************************************************************************
 
 //
-void TaskMenuUpdate(void *pvParameters __attribute__((unused))) 
+void TaskMenuUpdate(void *pvParameters __attribute__((unused)))
 {
       while (1)
       {
-
-            struct MyData localMainData;
-            xQueuePeek(mainDataQueue, &localMainData, 1);
 
             switch (myNex.currentPageId)
             {
 
             case MAIN_PAGE:
-                  myNex.writeNum(F("water.val"), localMainData.water_level_liter); //
-                  myNex.writeNum(F("OutsideTemp.val"), localMainData.outside_temperature);
-                  myNex.writeNum(F("InsideTemp.val"), localMainData.inside_temperature);
-                  myNex.writeNum(F("batVolt.val"), localMainData.battery_voltage * 10); //
+                  myNex.writeNum(F("water.val"), main_data.water_level_liter); //
+                  myNex.writeNum(F("OutsideTemp.val"), main_data.outside_temperature);
+                  myNex.writeNum(F("InsideTemp.val"), main_data.inside_temperature);
+                  myNex.writeNum(F("batVolt.val"), main_data.battery_voltage * 10); //
 
-                  if (localMainData.common_alarm)
+                  if (main_data.common_alarm)
                   {
                         myNex.writeNum(F("p0t0.bco"), RED);
                         myNex.writeNum(F("p0t0.pco"), WHITE);
@@ -1073,48 +1088,47 @@ void TaskMenuUpdate(void *pvParameters __attribute__((unused)))
                   break;
 
             case WATER_PAGE:
-                  if (localMainData.pump_output_state)
+                  if (main_data.pump_output_state)
                         myNex.writeNum(F("nxPumpState.val"), HIGH);
                   else
                         myNex.writeNum(F("nxPumpState.val"), LOW);
 
-                  myNex.writeNum(F("p1n0.val"), localMainData.water_level_liter);
-                  myNex.writeNum(F("p1n1.val"), localMainData.water_level_percent);
+                  myNex.writeNum(F("p1n0.val"), main_data.water_level_liter);
+                  myNex.writeNum(F("p1n1.val"), main_data.water_level_percent);
 
                   break;
 
             case IOSTATUS_PAGE:
-                  if (localMainData.door_switch_state)
+                  if (main_data.door_switch_state)
                         myNex.writeNum(F("p2t0.pco"), WHITE);
                   else
                         myNex.writeNum(F("p2t0.pco"), GRAY);
-                  if (localMainData.proximity_sensor_state)
+                  if (main_data.proximity_sensor_state)
                         myNex.writeNum(F("p2t1.pco"), WHITE);
                   else
                         myNex.writeNum(F("p2t1.pco"), GRAY);
-                  if (localMainData.ignition_switch_state)
+                  if (main_data.ignition_switch_state)
                         myNex.writeNum(F("p2t2.pco"), WHITE);
                   else
                         myNex.writeNum(F("p2t2.pco"), GRAY);
-                  if (localMainData.low_washer_water_level)
+                  if (main_data.low_washer_water_level)
                         myNex.writeNum(F("p2t3.pco"), WHITE);
                   else
                         myNex.writeNum(F("p2t3.pco"), GRAY);
 
-                  if (localMainData.pump_output_state)
+                  if (main_data.pump_output_state)
                         myNex.writeNum(F("p2t4.pco"), WHITE);
                   else
                         myNex.writeNum(F("p2t4.pco"), GRAY);
-                  if (localMainData.light_output_state)
+                  if (main_data.light_output_state)
                         myNex.writeNum(F("p2t5.pco"), WHITE);
                   else
                         myNex.writeNum(F("p2t5.pco"), GRAY);
                   // если выход конвертера писать третьим то не отображается на экране
-                  if (localMainData.converter_output_state)
+                  if (main_data.converter_output_state)
                         myNex.writeNum(F("p2t6.pco"), WHITE);
                   else
                         myNex.writeNum(F("p2t6.pco"), GRAY);
-            
 
                   break;
 
@@ -1188,7 +1202,7 @@ void TaskMenuUpdate(void *pvParameters __attribute__((unused)))
                   myNex.writeNum(F("p5n0.val"), setpoints_data.pump_off_delay);
                   myNex.writeNum(F("p5n1.val"), setpoints_data.resistive_sensor_correction);
                   myNex.writeNum(F("p5n2.val"), setpoints_data.water_tank_capacity);
-                  myNex.writeNum(F("p5n4.val"), localMainData.water_level_liter);
+                  myNex.writeNum(F("p5n4.val"), main_data.water_level_liter);
                   myNex.writeNum(F("p5n3.val"), timerPumpOffDelay.currentTime() * 0.001);
                   myNex.writeNum(F("p5n5.val"), setpoints_data.resistive_sensor_nominal);
 
@@ -1233,7 +1247,7 @@ void TaskMenuUpdate(void *pvParameters __attribute__((unused)))
                         myNex.writeNum(F("p5n5.pco"), WHITE);
 
                   //обновляем пункт управления насосом
-                  if (localMainData.pump_output_state)
+                  if (main_data.pump_output_state)
                         myNex.writeNum(F("p5t4.pco"), GREEN);
                   else
                         myNex.writeNum(F("p5t4.pco"), WHITE);
@@ -1492,9 +1506,9 @@ void TaskMenuUpdate(void *pvParameters __attribute__((unused)))
             case PJONSET_PAGE:
                   //обновляем динамические параметры страницы
                   myNex.writeNum(F("p8n0.val"), setpoints_data.pjon_ID);
-                  myNex.writeNum(F("p8n1.val"), localMainData.water_level_liter);
+                  myNex.writeNum(F("p8n1.val"), main_data.water_level_liter);
                   myNex.writeNum(F("p8n3.val"), setpoints_data.pjon_sensor_fault_timer);
-                  myNex.writeNum(F("p8n4.val"), setpoints_data.pjon_transmitt_period*100);
+                  myNex.writeNum(F("p8n4.val"), setpoints_data.pjon_transmitt_period * 100);
 
                   if (!flag_pjon_water_sensor_connected)
                   {
@@ -1585,9 +1599,9 @@ void TaskMenuUpdate(void *pvParameters __attribute__((unused)))
 
             case ONEWIRESCANNER_PAGE:
 
-                  myNex.writeNum(F("p9x0.val"), localMainData.inside_temperature * 10);
-                  myNex.writeNum(F("p9x1.val"), localMainData.outside_temperature * 10);
-                  myNex.writeNum(F("p9x2.val"), localMainData.spare_temperature * 10);
+                  myNex.writeNum(F("p9x0.val"), main_data.inside_temperature * 10);
+                  myNex.writeNum(F("p9x1.val"), main_data.outside_temperature * 10);
+                  myNex.writeNum(F("p9x2.val"), main_data.spare_temperature * 10);
 
                   break;
 
@@ -1828,21 +1842,19 @@ void TaskMenuUpdate(void *pvParameters __attribute__((unused)))
                   else
                         myNex.writeNum(F("p16t4.bco"), CYAN);
 
-                  break;                 
+                  break;
 
             default:
                   break;
             }
 
-      //***************
+            //***************
 
             if (myNex.currentPageId != myNex.lastCurrentPageId)
             {
                   fnMenuStaticDataUpdate();
                   myNex.lastCurrentPageId = myNex.currentPageId;
             }
-
-            xQueueOverwrite(mainDataQueue, &localMainData);
 
             vTaskDelay(30); // 30 * 15 = 450 ms
       }
@@ -1854,73 +1866,71 @@ void TaskTempSensorsUpdate(void *pvParameters __attribute__((unused)))
 {
       while (1)
       {
-            struct MyData localMainData;
-            xQueuePeek(mainDataQueue, &localMainData, 1);
-
-            static uint8_t temp_cnt;  
-            static uint8_t alarm_cnt; 
+            static uint8_t temp_cnt;
+            static uint8_t alarm_cnt;
 
             flag_ds18b20_update = 1 - flag_ds18b20_update;
             if (!flag_ds18b20_update)
                   temp_sensors.requestTemperatures(); //команда начала преобразования
             else
-            {      
-                  if(temp_cnt >= MAX_TEMP_SENSORS)temp_cnt = 0;
-                  temp_cnt++;              
-
+            {
+                  if (temp_cnt >= MAX_TEMP_SENSORS)
+                        temp_cnt = 0;
+                  temp_cnt++;
 
                   switch (temp_cnt)
                   {
                   case 1:
-                        localMainData.inside_temperature = temp_sensors.getTempC(thermometerID_1);
+                        main_data.inside_temperature = temp_sensors.getTempC(thermometerID_1);
                         break;
 
                   case 2:
-                        localMainData.outside_temperature = temp_sensors.getTempC(thermometerID_2);
+                        main_data.outside_temperature = temp_sensors.getTempC(thermometerID_2);
                         break;
-                  
+
                   case 3:
-                        localMainData.spare_temperature = temp_sensors.getTempC(thermometerID_3);
+                        main_data.spare_temperature = temp_sensors.getTempC(thermometerID_3);
                         break;
-                  
+
                   default:
                         temp_cnt = 0;
                         break;
                   }
 
-
-                  if(setpoints_data.num_found_temp_sensors > 0){
+                  if (setpoints_data.num_found_temp_sensors > 0)
+                  {
 
                         alarm_cnt = setpoints_data.num_found_temp_sensors;
                         present_alarms.temp_sensors = false;
 
-
-                        do{
+                        do
+                        {
                               switch (alarm_cnt)
                               {
                               case 1:
-                                    if(localMainData.inside_temperature == DEVICE_DISCONNECTED_C)present_alarms.temp_sensors = true;
+                                    if (main_data.inside_temperature == DEVICE_DISCONNECTED_C)
+                                          present_alarms.temp_sensors = true;
                                     break;
 
                               case 2:
-                                    if(localMainData.outside_temperature == DEVICE_DISCONNECTED_C)present_alarms.temp_sensors = true;
+                                    if (main_data.outside_temperature == DEVICE_DISCONNECTED_C)
+                                          present_alarms.temp_sensors = true;
                                     break;
-                              
+
                               case 3:
-                                    if(localMainData.spare_temperature == DEVICE_DISCONNECTED_C)present_alarms.temp_sensors = true;
+                                    if (main_data.spare_temperature == DEVICE_DISCONNECTED_C)
+                                          present_alarms.temp_sensors = true;
                                     break;
-                              
+
                               default:
                                     break;
                               }
 
-                        }while(alarm_cnt--);
-                  }            
+                        } while (alarm_cnt--);
+                  }
             }
 
-            xQueueOverwrite(mainDataQueue, &localMainData);
-
-            vTaskDelay( 250 / portTICK_PERIOD_MS );
+            vTaskDelay(250 / portTICK_PERIOD_MS);
       }
 }
 //***************************************************************
@@ -1930,10 +1940,10 @@ void TaskPjonTransmitter(void *pvParameters __attribute__((unused)))
 {
       while (1)
       {
-            struct MyData localMainData;
-
-            if (timerPjonTransmittPeriod.isReady()){
-                  if(!bus.update())fnPjonSender();
+            if (timerPjonTransmittPeriod.isReady())
+            {
+                  if (!bus.update())
+                        fnPjonSender();
             }
             pjon_RX_response = bus.receive(2000); // прием данных PJON и возврат результата приёма
 
@@ -1949,15 +1959,10 @@ void TaskVoltageMeasurement(void *pvParameters)
 
       while (1)
       {
-
-            struct MyData localMainData;
-            xQueuePeek(mainDataQueue, &localMainData,1);
-
             // Analog read power supply voltage & sensors supply voltage
-            localMainData.battery_voltage = (ps_voltage_filter.filtered(analogRead(SUPPLY_VOLTAGE_INPUT) - 127 + setpoints_data.voltage_correction) * DIVISION_RATIO_VOLTAGE_INPUT); //
-            localMainData.sensors_supply_voltage = (sens_voltage_filter.filtered(analogRead(SENSORS_VOLTAGE_INPUT)) * DIVISION_RATIO_SENS_SUPPLY_INPUT); //
-
-            xQueueOverwrite(mainDataQueue, &localMainData);
+            main_data.battery_voltage = (ps_voltage_filter.filtered(analogRead(SUPPLY_VOLTAGE_INPUT) - 127 + setpoints_data.voltage_correction) * DIVISION_RATIO_VOLTAGE_INPUT); //
+            main_data.sensors_supply_voltage = (sens_voltage_filter.filtered(analogRead(SENSORS_VOLTAGE_INPUT)) * DIVISION_RATIO_SENS_SUPPLY_INPUT);                             //
+            //main_data.sensors_supply_voltage = (analogRead(SENSORS_VOLTAGE_INPUT) * DIVISION_RATIO_SENS_SUPPLY_INPUT);
 
             vTaskDelay(5); // *15 ms
       }
@@ -1970,33 +1975,26 @@ void TaskModBusPool(void *pvParameters __attribute__((unused)))
       while (1)
       {
             //taskENTER_CRITICAL();
-            //vTaskSuspendAll();
-            //vTaskSuspend(TaskMenuUpdate_Handler);
             ModbusRTUServer.poll();
-            //vTaskResume(TaskMenuUpdate_Handler);
             // taskEXIT_CRITICAL();
-            // xTaskResumeAll();
             vTaskDelay(20); // *15 ms
             //vTaskDelay( 300 / portTICK_PERIOD_MS );
       }
 }
 //********************************************************************
 
+// Temp sensors ds18b20 scanner
 void TaskOwScanner(void *pvParameters __attribute__((unused)))
 {
       while (1)
       {
-            struct MyData localMainData;
-            xQueuePeek(mainDataQueue, &localMainData,1);
-
-            if (flag_ow_scan_to_start)
+            if (xSemaphoreTake(OwScannerToStartSemaphore, portMAX_DELAY) == pdPASS)
             {
-                  taskENTER_CRITICAL();
-            
-               
-                  if (!flag_ow_scanned)
+                  taskENTER_CRITICAL(); // критическая секция (нельзя прерывать во избежании потери данных при сканировании )
+
+                  if (!flag_ow_scanned) // если не просканировано то сканируем...
                   {
-                        setpoints_data.num_found_temp_sensors = 0;
+                        setpoints_data.num_found_temp_sensors = 0; // обнуляе количество найденных датчиков температуры
                         myNex.writeStr("p9t0.txt", "SCANNING...");
                         delay(1000);
 
@@ -2006,7 +2004,6 @@ void TaskOwScanner(void *pvParameters __attribute__((unused)))
 
                         if (oneWire.search(address))
                         {
-
                               do
                               {
                                     setpoints_data.num_found_temp_sensors++;
@@ -2014,7 +2011,7 @@ void TaskOwScanner(void *pvParameters __attribute__((unused)))
                                     switch (setpoints_data.num_found_temp_sensors)
                                     {
                                     case 1:
-                                          for (uint8_t j = 0; j < 8; j++)
+                                          for (uint8_t j = 0; j < 8; j++) // заносим адрес первого датчика в массив
                                           {
                                                 setpoints_data.sensors_ID_array[INSIDE_SENSOR - 1][j] = address[j];
                                                 thermometerID_1[j] = address[j];
@@ -2023,7 +2020,7 @@ void TaskOwScanner(void *pvParameters __attribute__((unused)))
                                                 if (j < 7)
                                                       tempString += ". ";
                                           }
-                                          myNex.writeStr("p9t2.txt", tempString);
+                                          myNex.writeStr("p9t2.txt", tempString); //
                                           tempString = "";
                                           tempString2 = "";
                                           break;
@@ -2134,9 +2131,9 @@ void TaskOwScanner(void *pvParameters __attribute__((unused)))
                               tempString2 = "";
 
                               temp_sensors.requestTemperatures();
-                              localMainData.inside_temperature = temp_sensors.getTempC(thermometerID_1);
-                              localMainData.outside_temperature = temp_sensors.getTempC(thermometerID_2);
-                              localMainData.spare_temperature = temp_sensors.getTempC(thermometerID_3);
+                              main_data.inside_temperature = temp_sensors.getTempC(thermometerID_1);
+                              main_data.outside_temperature = temp_sensors.getTempC(thermometerID_2);
+                              main_data.spare_temperature = temp_sensors.getTempC(thermometerID_3);
                               myNex.writeStr("p9b0.txt", "Save");
                         }
                         else
@@ -2185,22 +2182,18 @@ void TaskOwScanner(void *pvParameters __attribute__((unused)))
                         }
 
                         flag_ow_scanned = HIGH;
-                        present_alarms.temp_sensors = false; 
+                        present_alarms.temp_sensors = false;
                   }
                   else
                   {
                         myNex.writeStr("page 4");
-                        taskENTER_CRITICAL();
                         EEPROM.updateBlock(EEPROM_SETPOINTS_ADDRESS, setpoints_data);
-                        taskEXIT_CRITICAL();
                   }
 
                   taskEXIT_CRITICAL();
             }
 
-            flag_ow_scan_to_start = FALSE;
-
-            xQueueOverwrite(mainDataQueue, &localMainData);
+            //flag_ow_scan_to_start = FALSE;
 
             vTaskDelay(1); //  *15 ms
       }
@@ -2234,9 +2227,6 @@ void TaskDebug(void *pvParameters)
 
       for (;;)
       {
-            struct MyData localMainData;
-            xQueuePeek(mainDataQueue, &localMainData,1);
-
             //timers
             Serial.print F("timerPumpOffDelay:  ");
             Serial.println(timerPumpOffDelay.currentTime() / 1000);
@@ -2253,40 +2243,40 @@ void TaskDebug(void *pvParameters)
 
             //inputs
             Serial.print F("door_switch_state:  ");
-            Serial.println(localMainData.door_switch_state);
+            Serial.println(main_data.door_switch_state);
             Serial.print F("ignition_switch_state:  ");
-            Serial.println(localMainData.ignition_switch_state);
+            Serial.println(main_data.ignition_switch_state);
             Serial.print F("proximity_sensor_state:  ");
-            Serial.println(localMainData.proximity_sensor_state);
+            Serial.println(main_data.proximity_sensor_state);
 
             Serial.println();
 
             //outputs
             Serial.print F("converter_output_state:  ");
-            Serial.println(localMainData.converter_output_state);
+            Serial.println(main_data.converter_output_state);
             Serial.print F("light_output_state:  ");
-            Serial.println(localMainData.light_output_state);
+            Serial.println(main_data.light_output_state);
             Serial.print F("pump_output_state:  ");
-            Serial.println(localMainData.pump_output_state);
+            Serial.println(main_data.pump_output_state);
 
             Serial.println();
 
             //values
 
-            Serial.print F("localMainData.battery_voltage:  ");
-            Serial.println(localMainData.battery_voltage * 10);
-            Serial.print F("localMainData.inside_temperature:  ");
-            Serial.println(localMainData.inside_temperature * 10);
-            Serial.print F("localMainData.outside_temperature:  ");
-            Serial.println(localMainData.outside_temperature * 10);
-            Serial.print F("localMainData.water_level_percent:  ");
-            Serial.println(localMainData.water_level_percent);
-            Serial.print F("localMainData.water_level_liter:  ");
-            Serial.println(localMainData.water_level_liter);
-            Serial.print F("localMainData.sensors_supply_voltage:  ");
-            Serial.println(localMainData.sensors_supply_voltage * 10);
-            Serial.print F("localMainData.res_sensor_resistance:  ");
-            Serial.println(localMainData.res_sensor_resistance);
+            Serial.print F("main_data.battery_voltage:  ");
+            Serial.println(main_data.battery_voltage * 10);
+            Serial.print F("main_data.inside_temperature:  ");
+            Serial.println(main_data.inside_temperature * 10);
+            Serial.print F("main_data.outside_temperature:  ");
+            Serial.println(main_data.outside_temperature * 10);
+            Serial.print F("main_data.water_level_percent:  ");
+            Serial.println(main_data.water_level_percent);
+            Serial.print F("main_data.water_level_liter:  ");
+            Serial.println(main_data.water_level_liter);
+            Serial.print F("main_data.sensors_supply_voltage:  ");
+            Serial.println(main_data.sensors_supply_voltage * 10);
+            Serial.print F("main_data.res_sensor_resistance:  ");
+            Serial.println(main_data.res_sensor_resistance);
             Serial.print F("setpoints_data.num_found_temp_sensors:  ");
             Serial.println(setpoints_data.num_found_temp_sensors);
 
@@ -2385,8 +2375,6 @@ void TaskDebug(void *pvParameters)
             Serial.println();
 #endif
 
-            xQueueOverwrite(mainDataQueue, &localMainData);
-
             vTaskDelay(5000 / portTICK_PERIOD_MS);
       }
 }
@@ -2431,7 +2419,7 @@ void fnSensorsSupplyControl(MyData &data, GTimer &timer, Alarms &alarms)
                   break;
 
             case 1:
-                  if (data.battery_voltage < SENS_SUPPLY_CHECK_MIN_V)
+                  if (data.sensors_supply_voltage < SENS_SUPPLY_CHECK_MIN_V)
                   {
                         sens_supply_check_cnt++;
                         timer.setInterval(SENS_SUPPLY_CHECK_PERIOD);
@@ -2481,59 +2469,111 @@ bool fnReadErrorLogFromEeprom(void)
 }
 //******************************************************************
 
-// Обработка ошибок 
+// Обработка ошибок
 void fnAlarms(MyData &data, Alarms &alarms, Alarms &old_alarms, ErrLog &Log)
 {
-      if (alarms.sens_supply || alarms.resist_sensor || alarms.pj_water_sensor || alarms.temp_sensors)
-      {
-            data.common_alarm = true;
-            alarms.common = true;
+      if(main_data.flag_system_started){
 
-            // taskENTER_CRITICAL();
-            //  EEPROM.updateBlock(EEPROM_ERROR_LOG_ADDRES, ErrorLog);
-            //  taskEXIT_CRITICAL();
-      }
-      else {
-            data.common_alarm = false;
-            alarms.common = false;
-      }
-      //*************************************
+            if (alarms.sens_supply || alarms.resist_sensor || alarms.pj_water_sensor || alarms.temp_sensors)
+            {
+                  data.common_alarm = true;
+                  alarms.common = true;
 
-      if(alarms.sens_supply ) {
-            if(!old_alarms.sens_supply) {
-                  Log.sens_supply_error_cnt++;
-                  old_alarms.sens_supply = true;
+                  // taskENTER_CRITICAL();
+                  //  EEPROM.updateBlock(EEPROM_ERROR_LOG_ADDRES, ErrorLog);
+                  //  taskEXIT_CRITICAL();
             }
-      }
-      else old_alarms.sens_supply = false;
-
-
-      if(alarms.resist_sensor ) {
-            if(!old_alarms.resist_sensor) {
-                  Log.resist_sensor_error_cnt++;
-                  old_alarms.resist_sensor = true;
+            else
+            {
+                  data.common_alarm = false;
+                  alarms.common = false;
             }
-      }
-      else old_alarms.resist_sensor = false;
+            //*************************************
 
-
-      if(alarms.pj_water_sensor ) {
-            if(!old_alarms.pj_water_sensor) {
-                  Log.pj_water_sensor_error_cnt++;
-                  old_alarms.pj_water_sensor = true;
+            if (alarms.sens_supply)
+            {
+                  if (!old_alarms.sens_supply)
+                  {
+                        Log.sens_supply_error_cnt++;
+                        old_alarms.sens_supply = true;
+                  }
             }
-      }
-      else old_alarms.pj_water_sensor = false;
+            else
+                  old_alarms.sens_supply = false;
 
-
-      if(alarms.temp_sensors ) {
-            if(!old_alarms.temp_sensors) {
-                  Log.temp_sensors_error_cnt++;
-                  old_alarms.temp_sensors = true;
+            if (alarms.resist_sensor)
+            {
+                  if (!old_alarms.resist_sensor)
+                  {
+                        Log.resist_sensor_error_cnt++;
+                        old_alarms.resist_sensor = true;
+                  }
             }
-      }
-      else old_alarms.temp_sensors = false;
+            else
+                  old_alarms.resist_sensor = false;
 
+            if (alarms.pj_water_sensor)
+            {
+                  if (!old_alarms.pj_water_sensor)
+                  {
+                        Log.pj_water_sensor_error_cnt++;
+                        old_alarms.pj_water_sensor = true;
+                  }
+            }
+            else
+                  old_alarms.pj_water_sensor = false;
+
+            if (alarms.temp_sensors)
+            {
+                  if (!old_alarms.temp_sensors)
+                  {
+                        Log.temp_sensors_error_cnt++;
+                        old_alarms.temp_sensors = true;
+                  }
+            }
+            else
+                  old_alarms.temp_sensors = false;
+      }
 }
 
 //*****************************************************************************
+
+//
+void TaskInputsUpdate(void *pvParameters __attribute__((unused)))
+{
+      while (1)
+      {
+            //taskENTER_CRITICAL();
+            xSemaphoreTake(SystemStartedSemaphore, portMAX_DELAY);
+
+            if (!digitalRead(DOOR_SWITCH_INPUT_1))
+                  inputs_undebounced_sample |= (1 << 0);
+            else
+                  inputs_undebounced_sample &= ~(1 << 0);
+
+            if (!digitalRead(PROXIMITY_SENSOR_INPUT_2))
+                  inputs_undebounced_sample |= (1 << 1);
+            else
+                  inputs_undebounced_sample &= ~(1 << 1);
+
+            if (digitalRead(IGNITION_SWITCH_INPUT_3))
+                  inputs_undebounced_sample |= (1 << 2);
+            else
+                  inputs_undebounced_sample &= ~(1 << 2);
+
+            if (!digitalRead(LOW_WASHER_WATER_LEVEL_INPUT_4))
+                  inputs_undebounced_sample |= (1 << 3);
+            else
+                  inputs_undebounced_sample &= ~(1 << 3);
+
+            inputs_debounced_state = fnDebounce(inputs_undebounced_sample);
+
+            main_data.door_switch_state = (inputs_debounced_state & (1 << 0));
+            main_data.proximity_sensor_state = (inputs_debounced_state & (1 << 1));
+            main_data.ignition_switch_state = (inputs_debounced_state & (1 << 2));
+            main_data.low_washer_water_level = (inputs_debounced_state & (1 << 3));
+            // taskEXIT_CRITICAL();
+
+            vTaskDelay(100 / portTICK_PERIOD_MS);
+      }
+}
