@@ -4,7 +4,7 @@
 #include <Arduino.h>
 
 #define DEBUG_GENERAL   1
-#define DEBUG_RTOS      1
+#define DEBUG_RTOS      0
 #define DEBUG_ERROR_LOG 0
 
 //colors
@@ -122,7 +122,7 @@
 
 #define VERSION "ver 1.0"
 #define DIVISION_RATIO_VOLTAGE_INPUT  0.0208      // разрешение 0.0025 уможить на коэфициент деления предусилителя 4.85(или делителя)
-#define DIVISION_RATIO_SENS_SUPPLY_INPUT  0.0102  // разрешение 0.0025 уможить на коэфициент деления предусилителя 4.16
+#define DIVISION_RATIO_SENS_SUPPLY_INPUT  0.0106  // разрешение 0.0025(для TL431) или 0.00256 (для внутреннего опорного 2.56в) уможить на коэфициент деления предусилителя 4.16
 #define DIVISION_RATIO_RESIST_SENSOR  0.278       //
 
 #define MS_100        100           //  100ms

@@ -101,6 +101,8 @@ void fnSensorsSupplyControl(MyData &data, GTimer &timer, Alarms &alarms);
 void fnResSensRead(MyData &data);
 void fnAlarms(MyData &data, Alarms &alarms, Alarms &old_alarms, ErrLog &Log);
 
+
+
 //обработчик прерывания от Timer3 (сброс внешнего WDT)
 ISR(TIMER3_A)
 {
@@ -163,8 +165,8 @@ void setup()
 
       delay(1500);
 
-      ps_voltage_filter.setCoef(0.05); // установка коэффициента фильтрации (0.0... 1.0). Чем меньше, тем плавнее фильтр
-      ps_voltage_filter.setStep(100);  // установка шага фильтрации (мс). Чем меньше, тем резче фильтр
+      ps_voltage_filter.setCoef(0.1); // установка коэффициента фильтрации (0.0... 1.0). Чем меньше, тем плавнее фильтр
+      ps_voltage_filter.setStep(20);  // установка шага фильтрации (мс). Чем меньше, тем резче фильтр
       sens_voltage_filter.setCoef(0.1);
       sens_voltage_filter.setStep(50);
       resistive_sensor_filter.setCoef(0.02);
@@ -1960,6 +1962,7 @@ void TaskVoltageMeasurement(void *pvParameters)
       while (1)
       {
             // Analog read power supply voltage & sensors supply voltage
+            //main_data.battery_voltage = (analogRead(SUPPLY_VOLTAGE_INPUT) - 127 + setpoints_data.voltage_correction) * DIVISION_RATIO_VOLTAGE_INPUT;
             main_data.battery_voltage = (ps_voltage_filter.filtered(analogRead(SUPPLY_VOLTAGE_INPUT) - 127 + setpoints_data.voltage_correction) * DIVISION_RATIO_VOLTAGE_INPUT); //
             main_data.sensors_supply_voltage = (sens_voltage_filter.filtered(analogRead(SENSORS_VOLTAGE_INPUT)) * DIVISION_RATIO_SENS_SUPPLY_INPUT);                             //
             //main_data.sensors_supply_voltage = (analogRead(SENSORS_VOLTAGE_INPUT) * DIVISION_RATIO_SENS_SUPPLY_INPUT);
