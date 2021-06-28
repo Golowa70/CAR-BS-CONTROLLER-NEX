@@ -43,7 +43,12 @@
 #define ONEWIRESCANNER_PAGE    9
 #define MODBUSSET_PAGE        10
 #define BASESET_PAGE          11
+//#define INIT_PAGE             12
+//#define LOGO_0_PAGE           13
+//#define LOGO_1_PAGE           14
+//#define LOGO_2_PAGE           15
 #define ERROR_LOG_PAGE        0X10
+#define TIMERS_PAGE           0x11
 #define MAX_PAGES             20 
 
 //modes
@@ -121,9 +126,9 @@
 
 
 #define VERSION "ver 1.0"
-#define DIVISION_RATIO_VOLTAGE_INPUT  0.0208      // разрешение 0.0025 уможить на коэфициент деления предусилителя 4.85(или делителя)
-#define DIVISION_RATIO_SENS_SUPPLY_INPUT  0.0106  // разрешение 0.0025(для TL431) или 0.00256 (для внутреннего опорного 2.56в) уможить на коэфициент деления предусилителя 4.16
-#define DIVISION_RATIO_RESIST_SENSOR  0.278       //
+#define DIVISION_RATIO_VOLTAGE_INPUT      0.0208      // разрешение 0.0025 уможить на коэфициент деления предусилителя 4.85(или делителя)
+#define DIVISION_RATIO_SENS_SUPPLY_INPUT  0.0106      // разрешение 0.0025(для TL431) или 0.00256 (для внутреннего опорного 2.56в) уможить на коэфициент деления предусилителя 4.16
+#define DIVISION_RATIO_RESIST_SENSOR      0.29       //0.278       //
 
 #define MS_100        100           //  100ms
 #define SECOND       1000           //ms  секунда
@@ -131,7 +136,7 @@
 #define HOUR         3600000        //ms  час
 
 
-#define START_DELAY            3000       //ms задержка выполнения некоторых функций после подачи питания (пока датчики запустятся)
+#define START_DELAY                 3000  //ms задержка выполнения некоторых функций после подачи питания (пока датчики запустятся)
 #define PRX_SENSOR_FEEDBACK_DELAY   500   //ms задержка реакции датчика приближения (для стабильности)
 #define WDT_RESET_PERIOD        500000  // us период сброса ADM705 < 1.6 sec
 

@@ -40,6 +40,7 @@ GTimer timerStartDelay;   // таймер задержки опроса вход
 GTimer timerPrxSensorFeedbackDelay;
 GTimer timerSensSupplyCheck;
 GTimer timerPjonFaultDetector;
+GTimer timerFridgeShutdownDelay;
 
 GFilterRA ps_voltage_filter;
 GFilterRA sens_voltage_filter;
@@ -195,6 +196,7 @@ void setup()
       timerSensSupplyCheck.setInterval(SENS_SUPPLY_CHECK_START_DELAY);
       timerPjonFaultDetector.setMode(MANUAL);
       timerPjonFaultDetector.setInterval(setpoints_data.pjon_sensor_fault_timer * 1000);
+      timerFridgeShutdownDelay.setMode(MANUAL); // пока не используется
 
       fnMenuStaticDataUpdate();
 
@@ -1846,9 +1848,20 @@ void TaskMenuUpdate(void *pvParameters __attribute__((unused)))
 
                   break;
 
+            case TIMERS_PAGE:
+                  myNex.writeNum(F("p17n0.val"), timerPumpOffDelay.currentTime() / 1000);
+                  myNex.writeNum(F("p17n1.val"), timerLowUConverterOffDelay.currentTime() / 1000);
+                  myNex.writeNum(F("p17n2.val"), timerConverterShutdownDelay.currentTime() / 1000);
+                  myNex.writeNum(F("p17n3.val"), timerFridgeShutdownDelay.currentTime() / 1000);
+                  myNex.writeNum(F("p17n4.val"), timerShutdownDelay.currentTime() / 1000);
+                  myNex.writeNum(F("p17n5.val"), timerScreenOffDelay.currentTime() / 1000);                 
+                  break;
+
+
             default:
                   break;
             }
+
 
             //***************
 
