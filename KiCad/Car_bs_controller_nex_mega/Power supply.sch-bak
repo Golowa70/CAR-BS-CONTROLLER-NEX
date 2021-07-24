@@ -186,7 +186,7 @@ L Car_bs_controller_nex_mega-rescue:R-Device R1
 U 1 1 60173AF5
 P 1450 750
 F 0 "R1" V 1350 750 50  0000 C CNN
-F 1 "2k2" V 1600 750 50  0000 C CNN
+F 1 "3k9" V 1600 750 50  0000 C CNN
 F 2 "Resistor_SMD:R_0603_1608Metric_Pad0.98x0.95mm_HandSolder" V 1380 750 50  0001 C CNN
 F 3 "~" H 1450 750 50  0001 C CNN
 	1    1450 750 

@@ -66,9 +66,9 @@
 #define MAX_RESISTANCE          255
 
 //eeprom
-#define EEPROM_SETPOINTS_ADDRESS  0
-#define EEPROM_ERROR_LOG_ADDRES    64
-#define MAGIC_KEY                 0xAB   //ключь для определения записаны ли уставки в память EEPROM
+#define EEPROM_SETPOINTS_ADDRESS   0
+#define EEPROM_ERROR_LOG_ADDRES    100
+#define MAGIC_KEY                  0xAC   // 0xAB ключь для определения записаны ли уставки в память EEPROM
 //#define MAGIC_KEY_PART_1          0x1234567   // вариант с двумя частями один в начале второй в конце
 //#define MAGIC_KEY_PART_2          0x7654321
 

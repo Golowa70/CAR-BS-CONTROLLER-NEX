@@ -872,4 +872,14 @@ Text Notes 5900 3950 0    50   ~ 0
 15k(LM324)\n10k(MCP6004)
 Text Notes 5500 3550 0    50   ~ 0
 2.5V
+Wire Notes Line
+	550  750  4700 750 
+Wire Notes Line
+	4700 750  4700 1950
+Wire Notes Line
+	4700 1950 550  1950
+Wire Notes Line
+	550  1950 550  750 
+Text Notes 800  1650 0    79   ~ 16
+Optional
 $EndSCHEMATC
