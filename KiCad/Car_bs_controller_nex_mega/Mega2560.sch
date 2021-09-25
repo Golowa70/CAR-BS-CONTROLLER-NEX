@@ -4,7 +4,7 @@ EELAYER END
 $Descr A4 11693 8268
 encoding utf-8
 Sheet 4 8
-Title "Car bs controller nex mega"
+Title "Car bs controller nex mega v3"
 Date ""
 Rev ""
 Comp ""
@@ -14,10 +14,10 @@ Comment3 ""
 Comment4 ""
 $EndDescr
 $Comp
-L Car_bs_controller_nex_mega-rescue:MEGA_PRO_EMBED_CH340G___ATMEGA2560-MEGA_PRO_EMBED_CH340G___ATMEGA2560 U3
+L Car_bs_controller_nex_mega-rescue:MEGA_PRO_EMBED_CH340G___ATMEGA2560-MEGA_PRO_EMBED_CH340G___ATMEGA2560 U1
 U 1 1 6002A64B
 P 4950 3650
-F 0 "U3" H 4950 6317 50  0000 C CNN
+F 0 "U1" H 4950 6317 50  0000 C CNN
 F 1 "MEGA_PRO_EMBED_CH340G___ATMEGA2560" H 4950 6226 50  0000 C CNN
 F 2 "MODULE_MEGA_PRO_EMBED_CH340G_:_ATMEGA2560" H 4950 3650 50  0001 L BNN
 F 3 "" H 4950 3650 50  0001 L BNN
@@ -29,10 +29,10 @@ F 7 "Robotdyn" H 4950 3650 50  0001 L BNN "MANUFACTURER"
 	1    0    0    -1  
 $EndComp
 $Comp
-L power:GND #PWR036
+L Car_bs_controller_nex_mega-rescue:GND-power #PWR034
 U 1 1 6005869D
 P 5650 6200
-F 0 "#PWR036" H 5650 5950 50  0001 C CNN
+F 0 "#PWR034" H 5650 5950 50  0001 C CNN
 F 1 "GND" H 5655 6027 50  0000 C CNN
 F 2 "" H 5650 6200 50  0001 C CNN
 F 3 "" H 5650 6200 50  0001 C CNN
@@ -43,12 +43,10 @@ Wire Wire Line
 	5650 6200 5650 6050
 Text GLabel 5650 1250 2    50   Input ~ 0
 7.2V_stab
-Text GLabel 6400 1350 2    50   Output ~ 0
+Text GLabel 6950 1350 2    50   Output ~ 0
 +5v_FROM_MCU
 Wire Wire Line
 	6650 2650 5650 2650
-Wire Wire Line
-	5650 1350 6400 1350
 Text GLabel 5700 1650 2    50   Input ~ 0
 MCU_Uref_2.5v
 Wire Wire Line
@@ -249,4 +247,35 @@ Text GLabel 5650 3450 2    50   BiDi ~ 0
 MCU_I2C_SDA
 Text GLabel 4250 3450 0    50   BiDi ~ 0
 MCU_I2C_SCL
+Wire Wire Line
+	5650 1350 6750 1350
+$Comp
+L Device:CP C20
+U 1 1 6082B25A
+P 6750 1650
+F 0 "C20" H 6868 1696 50  0000 L CNN
+F 1 "220mk 10v" H 6868 1605 50  0000 L CNN
+F 2 "Capacitor_THT:CP_Radial_D6.3mm_P2.50mm" H 6788 1500 50  0001 C CNN
+F 3 "~" H 6750 1650 50  0001 C CNN
+	1    6750 1650
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	6750 1500 6750 1350
+Connection ~ 6750 1350
+Wire Wire Line
+	6750 1350 6950 1350
+$Comp
+L power:GND #PWR035
+U 1 1 6082CBB1
+P 6750 1900
+F 0 "#PWR035" H 6750 1650 50  0001 C CNN
+F 1 "GND" H 6755 1727 50  0000 C CNN
+F 2 "" H 6750 1900 50  0001 C CNN
+F 3 "" H 6750 1900 50  0001 C CNN
+	1    6750 1900
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	6750 1900 6750 1800
 $EndSCHEMATC

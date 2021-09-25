@@ -3,7 +3,9 @@
 
 #include <Arduino.h>
 
-#define DEBUG_GENERAL 1
+#define DEBUG_GENERAL   1
+#define DEBUG_RTOS      0
+#define DEBUG_ERROR_LOG 0
 
 //colors
 #define WHITE       65535
@@ -11,10 +13,20 @@
 #define BLUE        20510
 #define GREEN       33792
 #define GRAY        27469
+#define GRAY2       50712
+#define RED         57543
+#define BLUE_2         31
+#define CYAN         2831
+#define UNSAVED_ITEM_COLOR  YELLOW
+
 
 //timers
-#define TEMP_SENSORS_UPDATE_PERIOD   1000
-#define MENU_UPDATE_PERIOD           500
+#define TEMP_SENSORS_UPDATE_PERIOD   1000   //ms
+#define MENU_UPDATE_PERIOD           500    //ms
+#define SENS_SUPPLY_CHECK_PERIOD     100    //ms
+#define SENS_SUPPLY_CHECK_TIMES      5
+#define SENS_SUPPLY_CHECK_MIN_V      4
+#define SENS_SUPPLY_CHECK_START_DELAY 2000  //ms  
 
 #define NEXTION_BAUD_RATE            115200
 
@@ -31,6 +43,12 @@
 #define ONEWIRESCANNER_PAGE    9
 #define MODBUSSET_PAGE        10
 #define BASESET_PAGE          11
+//#define INIT_PAGE             12
+//#define LOGO_0_PAGE           13
+//#define LOGO_1_PAGE           14
+//#define LOGO_2_PAGE           15
+#define ERROR_LOG_PAGE        0X10
+#define TIMERS_PAGE           0x11
 #define MAX_PAGES             20 
 
 //modes
@@ -38,17 +56,26 @@
 #define ON_MODE                1
 #define AUTO_MODE              2
 
+//water sensors types
+#define WATER_FLOAT_SENSOR_PJ  0
+#define WATER_FLOW_SENSOR_PJ   1
+#define WATER_RESISTIVE_SENSOR 2
+
+//resistive sensor nominal
+#define MIN_RESISTANCE          10
+#define MAX_RESISTANCE          255
 
 //eeprom
-#define EEPROM_SETPOINTS_ADDRESS  0
-#define MAGIC_KEY                 0x123456//7   //ключь для определения записаны ли уставки в память EEPROM
+#define EEPROM_SETPOINTS_ADDRESS   0
+#define EEPROM_ERROR_LOG_ADDRES    100
+#define MAGIC_KEY                  0xAC   // 0xAB ключь для определения записаны ли уставки в память EEPROM
 //#define MAGIC_KEY_PART_1          0x1234567   // вариант с двумя частями один в начале второй в конце
 //#define MAGIC_KEY_PART_2          0x7654321
 
 //communications
 #define PJON_BUS_PIN         3   // new 
 #define ONE_WIRE_PIN         4
-#define DE_RS485_PIN         6
+#define DE_RS485_PIN         6   // in RS485.h
 
 // water level sensor
 #define WATER_LEVEL_LESS_THEN_25      1      
@@ -67,15 +94,18 @@
 //inputs
 #define DOOR_SWITCH_INPUT_1                 54       //A0
 #define PROXIMITY_SENSOR_INPUT_2            55       //A1
-#define IGNITION_SWITCH_INPUT_3             56       //A2
+#define IGNITION_SWITCH_INPUT_3             56       //A2 
 #define LOW_WASHER_WATER_LEVEL_INPUT_4      57       //A3
 #define SUPPLY_VOLTAGE_INPUT                A4       //A4
+#define SENSORS_VOLTAGE_INPUT               A5       //A5
+#define RESISTIVE_SENSOR                    A6       //A6
 #define WATER_FLOW_SENSOR                    5       //YF-S201 (пока не используется)
 #define BUTTON_ON_BOARD                     10       // кнопка на плате (пока не используется)
+#define POWER_OK_FROM_ADM705                41       //
 //#define ENCODER_SW							35
 //#define ENCODER_DT							36
 //#define ENCODER_CLK							37
-//#define SENSORS_VOLTAGE_TEST_INPUT			A5  // пока не используется
+
 
 //outputs
 #define WATER_PUMP_OUTPUT_1      22  
@@ -90,22 +120,23 @@
 //pjon swbb
 #define PJON_MY_ID                    2
 #define PJON_MAIN_CONTROLLER_ID       1
-#define PJON_WATER_LEVEL_SENSOR_ID    3
+#define PJON_WATER_FLOAT_SENSOR_ID    3
 #define PJON_WATER_FLOW_SENSOR_ID     4
 #define PJON_MAX_NODES                2 // пока два
 
 
 #define VERSION "ver 1.0"
-#define DIVISION_RATIO_VOLTAGE_INPUT  0.0208    // разрешение 0.0025  уможить на коэфициент резистивного делителя 8.2
+#define DIVISION_RATIO_VOLTAGE_INPUT      0.0208      // разрешение 0.0025 уможить на коэфициент деления предусилителя 4.85(или делителя)
+#define DIVISION_RATIO_SENS_SUPPLY_INPUT  0.0106      // разрешение 0.0025(для TL431) или 0.00256 (для внутреннего опорного 2.56в) уможить на коэфициент деления предусилителя 4.16
+#define DIVISION_RATIO_RESIST_SENSOR      0.29       //0.278       //
 
-
+#define MS_100        100           //  100ms
 #define SECOND       1000           //ms  секунда
 #define MINUTE       60000          //ms  минута
 #define HOUR         3600000        //ms  час
 
 
-#define INPUTS_UPDATE_PERIOD   50        //ms период обновления опроса входов
-#define START_DELAY            3000       //ms задержка опроса входов после подачи питания (пока датчики запустятся)
+#define START_DELAY                 3000  //ms задержка выполнения некоторых функций после подачи питания (пока датчики запустятся)
 #define PRX_SENSOR_FEEDBACK_DELAY   500   //ms задержка реакции датчика приближения (для стабильности)
 #define WDT_RESET_PERIOD        500000  // us период сброса ADM705 < 1.6 sec
 
