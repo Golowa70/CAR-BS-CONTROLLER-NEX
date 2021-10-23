@@ -166,6 +166,9 @@ void setup()
 
       delay(1500);
 
+     // String tempStr = "dim=" + String(setpoints_data.lcd_brightness);
+     // myNex.writeStr(tempStr);       //установка яркости дисплея
+
       ps_voltage_filter.setCoef(0.1); // установка коэффициента фильтрации (0.0... 1.0). Чем меньше, тем плавнее фильтр
       ps_voltage_filter.setStep(20);  // установка шага фильтрации (мс). Чем меньше, тем резче фильтр
       sens_voltage_filter.setCoef(0.1);
@@ -480,6 +483,7 @@ void trigger4()
       EEPROM.updateBlock(EEPROM_SETPOINTS_ADDRESS, setpoints_data);
       memcpy(&old_setpoints_data, &setpoints_data, sizeof(Setpoints));
       taskEXIT_CRITICAL();
+       
       timerPjonTransmittPeriod.setInterval(setpoints_data.pjon_transmitt_period * MS_100); // обновление интервала
       flag_value_changed = LOW;
 }
@@ -950,6 +954,13 @@ void TaskLoop(void *pvParameters) // This is a Task.
             fnResSensRead(main_data); //
 
             fnOutputsUpdate(main_data);
+
+            //обновление яркости дисплея
+            if(setpoints_data.lcd_brightness != old_setpoints_data.lcd_brightness){
+                  String dimStr = "dim=" + String(setpoints_data.lcd_brightness);
+                  myNex.writeStr(dimStr);
+            }
+            
 
 
 
@@ -2295,6 +2306,8 @@ void TaskDebug(void *pvParameters)
             Serial.println(main_data.res_sensor_resistance);
             Serial.print F("setpoints_data.num_found_temp_sensors:  ");
             Serial.println(setpoints_data.num_found_temp_sensors);
+            Serial.print F("setpoints_data.lcd_brightness:  ");
+            Serial.println(setpoints_data.lcd_brightness);
 
             Serial.print F("myNex.currentPageId:  ");
             Serial.println(myNex.currentPageId);
